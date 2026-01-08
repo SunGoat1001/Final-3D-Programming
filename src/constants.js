@@ -15,7 +15,10 @@ export const MOVE_FORCE_MULTIPLIER = 50;  // Force multiplier for movement
 
 // Controls
 export const MOUSE_SENSITIVITY = 0.002;
+export const AIM_SENSITIVITY = 0.001;
 export const JUMP_VELOCITY = 20;
+export const NORMAL_FOV = 75;
+export const AIM_FOV = 45;
 
 // Physics
 export const GRAVITY = -30;

@@ -21,6 +21,11 @@ export class PointerLockControlsCannon {
         // Shooting callback
         this.onShoot = null;
 
+        // Aim state
+        this.isAiming = false;
+        this.targetFOV = 75;
+        this.currentFOV = 75;
+
         // Euler for camera rotation
         this.euler = new THREE.Euler(0, 0, 0, 'YXZ');
 
@@ -36,6 +41,7 @@ export class PointerLockControlsCannon {
         this.onKeyDown = this.onKeyDown.bind(this);
         this.onKeyUp = this.onKeyUp.bind(this);
         this.onMouseDown = this.onMouseDown.bind(this);
+        this.onMouseUp = this.onMouseUp.bind(this);
         this.onPointerlockChange = this.onPointerlockChange.bind(this);
         this.onPointerlockError = this.onPointerlockError.bind(this);
 
@@ -64,6 +70,7 @@ export class PointerLockControlsCannon {
         document.addEventListener('keydown', this.onKeyDown);
         document.addEventListener('keyup', this.onKeyUp);
         document.addEventListener('mousedown', this.onMouseDown);
+        document.addEventListener('mouseup', this.onMouseUp);
         document.addEventListener('pointerlockchange', this.onPointerlockChange);
         document.addEventListener('pointerlockerror', this.onPointerlockError);
 
@@ -80,6 +87,7 @@ export class PointerLockControlsCannon {
         document.removeEventListener('keydown', this.onKeyDown);
         document.removeEventListener('keyup', this.onKeyUp);
         document.removeEventListener('mousedown', this.onMouseDown);
+        document.removeEventListener('mouseup', this.onMouseUp);
         document.removeEventListener('pointerlockchange', this.onPointerlockChange);
         document.removeEventListener('pointerlockerror', this.onPointerlockError);
     }
@@ -90,9 +98,12 @@ export class PointerLockControlsCannon {
         const movementX = event.movementX || 0;
         const movementY = event.movementY || 0;
 
+        // Use reduced sensitivity when aiming
+        const sensitivity = this.isAiming ? 0.001 : MOUSE_SENSITIVITY;
+
         this.euler.setFromQuaternion(this.camera.quaternion);
-        this.euler.y -= movementX * MOUSE_SENSITIVITY;
-        this.euler.x -= movementY * MOUSE_SENSITIVITY;
+        this.euler.y -= movementX * sensitivity;
+        this.euler.x -= movementY * sensitivity;
 
         // Clamp pitch
         this.euler.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, this.euler.x));
@@ -144,7 +155,20 @@ export class PointerLockControlsCannon {
         if (!this.isLocked()) return;
 
         if (event.button === 0 && this.onShoot) {
+            // Left click to shoot
             this.onShoot();
+        } else if (event.button === 2) {
+            // Right click to aim/zoom
+            this.isAiming = true;
+            this.targetFOV = 45;
+        }
+    }
+
+    onMouseUp(event) {
+        if (event.button === 2) {
+            // Right click released
+            this.isAiming = false;
+            this.targetFOV = 75;
         }
     }
 
@@ -220,6 +244,18 @@ export class PointerLockControlsCannon {
                 worldVelocity.z * this.sphereBody.mass * MOVE_FORCE_MULTIPLIER
             );
             this.sphereBody.applyForce(force);
+        }
+
+        // Interpolate FOV for smooth zoom
+        const fovDiff = this.targetFOV - this.currentFOV;
+        if (Math.abs(fovDiff) > 0.1) {
+            this.currentFOV += fovDiff * 0.1;  // Smooth interpolation
+            this.camera.fov = this.currentFOV;
+            this.camera.updateProjectionMatrix();
+        } else if (this.currentFOV !== this.targetFOV) {
+            this.currentFOV = this.targetFOV;
+            this.camera.fov = this.currentFOV;
+            this.camera.updateProjectionMatrix();
         }
 
         // Sync camera position to sphere body

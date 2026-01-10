@@ -9,9 +9,13 @@ import { world } from './physics.js';
 import { createPlayerBody } from './player.js';
 import { PointerLockControlsCannon } from './controls.js';
 import { FIXED_TIME_STEP, MAX_SUB_STEPS } from './constants.js';
-import { shoot, updateBullets } from './shooting.js';
+import { processShot, updateBullets } from './shooting.js';
 import { initObstacles } from './obstacles.js';
 import { updateEnemy } from './enemy.js';
+
+// Weapon System
+import { WeaponManager } from './weapons/WeaponManager.js';
+import { WeaponUI } from './weapons/WeaponUI.js';
 
 // ===========================
 // PHYSICS SETUP
@@ -33,9 +37,41 @@ const sphereBody = createPlayerBody();
 // ===========================
 const controls = new PointerLockControlsCannon(camera, sphereBody);
 
-// Set shoot callback
+// ===========================
+// WEAPON SYSTEM
+// ===========================
+const weaponManager = new WeaponManager(camera);
+const weaponUI = new WeaponUI();
+
+// Set up weapon callbacks
+weaponManager.onShootCallback = (shotData) => {
+    processShot(shotData);
+};
+
+weaponManager.onWeaponSwitch = (weapon, ammoState) => {
+    weaponUI.updateWeaponInfo(weaponManager.getWeaponInfo());
+    console.log(`Switched to ${weapon.name}`);
+};
+
+weaponManager.onAmmoChange = (ammoState) => {
+    weaponUI.updateWeaponInfo(weaponManager.getWeaponInfo());
+};
+
+weaponManager.onReloadStart = (reloadTime) => {
+    console.log(`Reloading... (${reloadTime}s)`);
+};
+
+weaponManager.onReloadEnd = () => {
+    weaponUI.hideReload();
+    weaponUI.updateWeaponInfo(weaponManager.getWeaponInfo());
+};
+
+// Initial UI update
+weaponUI.updateWeaponInfo(weaponManager.getWeaponInfo());
+
+// Set shoot callback - now uses WeaponManager
 controls.onShoot = () => {
-    shoot(camera, sphereBody);
+    weaponManager.tryShoot();
 };
 
 // ===========================
@@ -60,8 +96,20 @@ function animate() {
 
     const deltaTime = clock.getDelta();
 
+    // Get move speed multiplier from current weapon
+    const weaponInfo = weaponManager.getHighlightInfo ? weaponManager.getHighlightInfo() : weaponManager.getWeaponInfo();
+    controls.moveSpeedMultiplier = weaponInfo.moveSpeedMultiplier || 1.0;
+
     // Update controls (applies forces to sphere body)
     controls.update(deltaTime);
+
+    // Update weapon manager (handles reload, weapon position)
+    weaponManager.update(deltaTime);
+
+    // Update reload UI
+    if (weaponManager.isReloading) {
+        weaponUI.showReloadProgress(weaponManager.reloadProgress);
+    }
 
     // Step physics world first
     world.step(FIXED_TIME_STEP, deltaTime, MAX_SUB_STEPS);
@@ -80,3 +128,13 @@ function animate() {
 // START
 // ===========================
 animate();
+
+// Log controls help
+console.log('=== FPS Controls ===');
+console.log('WASD - Move');
+console.log('Space - Jump');
+console.log('Left Click - Shoot');
+console.log('Right Click - Aim');
+console.log('1/2/3 - Switch Weapon');
+console.log('R - Reload');
+console.log('====================');

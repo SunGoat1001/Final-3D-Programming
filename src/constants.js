@@ -20,6 +20,13 @@ export const JUMP_VELOCITY = 20;
 export const NORMAL_FOV = 75;
 export const AIM_FOV = 45;
 
+// Movement States
+export const SPRINT_MULTIPLIER = 1.8;
+export const CROUCH_MULTIPLIER = 0.5;
+export const STANDING_HEIGHT = 0;      // Offset from sphere center
+export const CROUCHING_HEIGHT = -0.3; // Offset from sphere center when crouching
+export const CROUCH_SPEED = 0.1;      // Transition speed for crouching
+
 // Physics
 export const GRAVITY = -30;
 export const FIXED_TIME_STEP = 1 / 60;

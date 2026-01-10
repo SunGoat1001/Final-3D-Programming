@@ -59,6 +59,12 @@ export class WeaponManager {
         this.equipProgress = 0;
         this.equipDuration = 0.3; // seconds
 
+        // Animation States
+        this.shootAnimStartTime = 0;
+        this.meleeAnimStartTime = 0;
+        this.shootAnimDuration = 0.15; // fast recoil
+        this.meleeAnimDuration = 0.4; // sword swing duration
+
 
         // Callbacks
         this.onShootCallback = null;
@@ -232,6 +238,8 @@ export class WeaponManager {
         // Reset shooting state
         this.canShoot = true;
         this.lastShootTime = 0;
+        this.shootAnimStartTime = 0;
+        this.meleeAnimStartTime = 0;
 
         // Trigger equip animation
         this.isEquipping = true;
@@ -306,6 +314,13 @@ export class WeaponManager {
         if (this.currentWeapon.id === 'shotgun') playShotgunShot();
         if (this.currentWeapon.id === 'sword') playSwordSwing();
 
+        }
+
+        // Trigger animations
+        if (isRangedWeapon(this.currentWeapon)) {
+            this.shootAnimStartTime = now;
+        } else if (isMeleeWeapon(this.currentWeapon)) {
+            this.meleeAnimStartTime = now;
         }
 
         return shotData;
@@ -553,22 +568,94 @@ export class WeaponManager {
             equipRotation.x = startRotX * (1 - this.equipProgress);
         }
 
+        // 4. Procedural Shoot/Recoil Animation (Ranged)
+        let recoilOffset = new THREE.Vector3(0, 0, 0);
+        let recoilRotation = new THREE.Euler(0, 0, 0);
+        
+        const now = performance.now() / 1000;
+        if (isRangedWeapon(this.currentWeapon) && this.shootAnimStartTime > 0) {
+            const timeSinceShoot = now - this.shootAnimStartTime;
+            if (timeSinceShoot < this.shootAnimDuration) {
+                const t = timeSinceShoot / this.shootAnimDuration;
+                
+                // Impulse: Fast back, slow return
+                // Power curve
+                const kick = Math.sin(t * Math.PI) * (1 - t); 
+                
+                recoilOffset.z = 0.15 * kick; // Kick back
+                recoilOffset.y = 0.02 * kick; // Slight up
+                recoilRotation.x = 0.2 * kick; // Muzzle climb
+            }
+        }
+
+        // 5. Procedural Melee Swing Animation (Sword)
+        let meleeOffset = new THREE.Vector3(0, 0, 0);
+        let meleeRotation = new THREE.Euler(0, 0, 0);
+
+        if (isMeleeWeapon(this.currentWeapon)) {
+            // Base Idle Rotation ("Pointing to Sky")
+            // Blade is at -Z (Forward). We need Positive X rotation to point it Up (+Y).
+            meleeOffset.x = 0.2; // Right side
+            meleeOffset.y = -0.3; // Low enough so we see the blade rise
+            meleeOffset.z = -0.3; // Forward
+            
+            meleeRotation.x = 1.6; // ~90 degrees Up
+            meleeRotation.y = -0.3;  // Tilt slightly left (inward)
+            meleeRotation.z = -0.1; // Cant
+
+            if (this.meleeAnimStartTime > 0) {
+                const timeSinceMelee = now - this.meleeAnimStartTime;
+                if (timeSinceMelee < this.meleeAnimDuration) {
+                    const t = timeSinceMelee / this.meleeAnimDuration;
+                    
+                    // Chop Down Animation (From Up to Forward/Down)
+                    if (t < 0.2) {
+                        // Wind up: Cock back (Point further up/back)
+                        const wt = t / 0.2;
+                        meleeRotation.x = 1.6 + (0.3 * wt); 
+                        meleeOffset.y = -0.3 - (0.1 * wt); // Lower slightly to gather power
+                    } else if (t < 0.6) {
+                        // Swing: Fast chop Down
+                        // From 1.9 (Up/Back) to 0.0 (Forward)
+                        const st = (t - 0.2) / 0.4;
+                        const start = 1.9;
+                        const end = 0.2; // Level with horizon
+                        meleeRotation.x = start + (end - start) * st;
+                        
+                        meleeOffset.z = -0.3 - (0.4 * Math.sin(st * Math.PI)); // Reach out
+                        meleeOffset.y = -0.3 + (0.1 * st); // Move up slightly as arm extends? or down?
+                    } else {
+                        // Recovery: Return to Up
+                        const rt = (t - 0.6) / 0.4;
+                        const start = 0.2;
+                        const end = 1.6;
+                        // Ease out
+                        const ease = 1 - Math.pow(1 - rt, 2);
+                        meleeRotation.x = start + (end - start) * ease;
+                        meleeOffset.z = -0.3 * (1 - ease) - 0.3;
+                    }
+                }
+            }
+        }
+
         // COMBINE TRANSFORMATIONS
         
         // Apply camera quaternion to align with view
         mesh.quaternion.copy(this.camera.quaternion);
 
-        // Apply local rotations (Equip + Reload + Recoil could go here)
+        // Apply local rotations (Equip + Reload + Recoil + Melee)
         // Note: Order matters. We rotate the mesh "locally" relative to camera
-        mesh.rotateX(reloadRotation.x + equipRotation.x);
-        mesh.rotateY(reloadRotation.y);
-        mesh.rotateZ(reloadRotation.z);
+        mesh.rotateX(reloadRotation.x + equipRotation.x + recoilRotation.x + meleeRotation.x);
+        mesh.rotateY(reloadRotation.y + meleeRotation.y);
+        mesh.rotateZ(reloadRotation.z + meleeRotation.z);
 
-        // Combine offsets (Aim + Reload + Equip)
+        // Combine offsets (Aim + Reload + Equip + Recoil + Melee)
         // These are strictly local to the camera view
         const finalLocalPosition = currentLocalOffset.clone()
             .add(reloadOffset)
-            .add(equipOffset);
+            .add(equipOffset)
+            .add(recoilOffset)
+            .add(meleeOffset);
 
         // Transform local position to world space relative to camera
         const worldOffset = finalLocalPosition.clone();
@@ -576,10 +663,6 @@ export class WeaponManager {
 
         // Set final position
         mesh.position.copy(this.camera.position).add(worldOffset);
-        
-        // Add Bobbing (Movement)
-        // Note: Ideally bobbing is calculated separately in controls or here based on velocity
-        // For now, reload bobbing is replaced by the aim sequence above.
     }
 
     /**

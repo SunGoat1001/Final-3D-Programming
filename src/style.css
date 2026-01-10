@@ -113,3 +113,65 @@ canvas {
 #instructions strong {
   color: #ffff00;
 }
+
+/* Health HUD */
+#health-container {
+  position: fixed;
+  bottom: 30px;
+  left: 30px;
+  /* Removed background and borders for minimal look */
+  padding: 0;
+  z-index: 100;
+}
+
+#health-text {
+  font-size: 80px;
+  /* Much larger */
+  font-weight: bold;
+  color: #fff;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+/* Death Screen */
+#death-screen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(50, 0, 0, 0.8);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 2000;
+  backdrop-filter: blur(5px);
+}
+
+#death-screen h1 {
+  font-size: 80px;
+  color: #ff0000;
+  text-shadow: 0 0 20px rgba(0, 0, 0, 0.8);
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  margin-bottom: 20px;
+  text-transform: uppercase;
+  letter-spacing: 5px;
+}
+
+#death-screen p {
+  font-size: 24px;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.5);
+  padding: 15px 30px;
+  border: 1px solid #ff0000;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+#death-screen p:hover {
+  background: #ff0000;
+  color: #000;
+  transform: scale(1.05);
+}

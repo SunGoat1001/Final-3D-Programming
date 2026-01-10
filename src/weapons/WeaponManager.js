@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { getControls } from '../controls.js';
 import {
     WEAPONS,
@@ -95,14 +96,85 @@ export class WeaponManager {
     }
 
     /**
-     * Create placeholder weapon meshes
+     * Create placeholder weapon meshes and load real 3D models
      */
     _createWeaponMeshes() {
+        // Model paths and transform configurations for each weapon
+        const modelConfigs = {
+            RIFLE: {
+                path: 'models/hk_g36.glb',
+                position: { x: 0, y: -0.05, z: 0.1 },
+                rotation: { x: 0, y: Math.PI, z: 0 },
+                scale: { x: 0.08, y: 0.08, z: 0.08 }
+            },
+            SHOTGUN: {
+                path: 'models/shotgun.glb',
+                position: { x: 0.05, y: -0.2, z: 0.2 },
+                rotation: { x: 0, y: Math.PI, z: 0 },
+                scale: { x: 0.07, y: 0.07, z: 0.07 }
+            },
+            SWORD: {
+                path: 'models/sword.glb',
+                position: { x: 0.15, y: -0.7, z: -0.3 },
+                rotation: { x: -Math.PI / 3, y: Math.PI, z:0 },
+                scale: { x: 0.006, y: 0.006, z: 0.006 }
+            },
+            GRENADE: {
+                path: 'models/nade.glb',
+                position: { x: 0, y: -0.05, z: -0.05 },
+                rotation: { x: 0, y: 0, z: 0 },
+                scale: { x: 0.60, y: 0.60, z: 0.60 }
+            }
+        };
+
+        const loader = new GLTFLoader();
+
         for (const [id, weapon] of Object.entries(WEAPONS)) {
-            const mesh = this._createWeaponPlaceholder(weapon);
-            mesh.visible = false;
-            scene.add(mesh);
-            this.weaponMeshes[id] = mesh;
+            // Create placeholder (kept but hidden)
+            const group = this._createWeaponPlaceholder(weapon);
+            group.visible = false;
+            scene.add(group);
+            this.weaponMeshes[id] = group;
+
+            // Hide placeholder meshes (keep the group structure)
+            group.traverse((child) => {
+                if (child.isMesh) {
+                    child.visible = false;
+                }
+            });
+
+            // Load real 3D model
+            const config = modelConfigs[id];
+            if (config) {
+                loader.load(
+                    config.path,
+                    (gltf) => {
+                        const model = gltf.scene;
+
+                        // Apply transform from config
+                        model.position.set(config.position.x, config.position.y, config.position.z);
+                        model.rotation.set(config.rotation.x, config.rotation.y, config.rotation.z);
+                        model.scale.set(config.scale.x, config.scale.y, config.scale.z);
+
+                        // Enable shadows on model meshes
+                        model.traverse((child) => {
+                            if (child.isMesh) {
+                                child.castShadow = true;
+                                child.receiveShadow = false;
+                            }
+                        });
+
+                        // Add as child to the weapon group
+                        group.add(model);
+
+                        console.log(`[WeaponManager] Loaded 3D model for ${weapon.name}`);
+                    },
+                    undefined,
+                    (error) => {
+                        console.error(`[WeaponManager] Error loading model for ${weapon.name}:`, error);
+                    }
+                );
+            }
         }
     }
 
@@ -310,9 +382,9 @@ export class WeaponManager {
         if (this.onShootCallback) {
             this.onShootCallback(shotData);
             // Play shoot sound
-        if (this.currentWeapon.id === 'rifle') playRifleShot();
-        if (this.currentWeapon.id === 'shotgun') playShotgunShot();
-        if (this.currentWeapon.id === 'sword') playSwordSwing();
+            if (this.currentWeapon.id === 'rifle') playRifleShot();
+            if (this.currentWeapon.id === 'shotgun') playShotgunShot();
+            if (this.currentWeapon.id === 'sword') playSwordSwing();
 
         }
 
@@ -472,7 +544,7 @@ export class WeaponManager {
                 this._completeReload();
             }
         }
-        
+
         // Update aim progress logic
         this._updateAimState(deltaTime);
 
@@ -495,7 +567,7 @@ export class WeaponManager {
         const isAiming = controls ? controls.isAiming : false;
 
         // Speed of aim transition
-        const aimSpeed = 8.0; 
+        const aimSpeed = 8.0;
 
         if (isAiming) {
             this.aimProgress = Math.min(this.aimProgress + deltaTime * aimSpeed, 1);
@@ -530,7 +602,7 @@ export class WeaponManager {
 
         if (this.isReloading) {
             const p = this.reloadProgress; // 0 to 1
-            
+
             if (p < 0.2) {
                 // Phase 1: Lower weapon (0 -> 0.2)
                 const t = p / 0.2;
@@ -540,10 +612,10 @@ export class WeaponManager {
                 // Phase 2: Hold/Shake (0.2 -> 0.8)
                 reloadOffset.y = -0.2;
                 reloadRotation.x = 0.5;
-                
+
                 // Detailed shake for inserting actions
                 // Just small noise
-                reloadRotation.z = Math.sin(p * 20) * 0.05; 
+                reloadRotation.z = Math.sin(p * 20) * 0.05;
                 reloadOffset.y += Math.sin(p * 30) * 0.01;
             } else {
                 // Phase 3: Return (0.8 -> 1.0)
@@ -562,7 +634,7 @@ export class WeaponManager {
             // Bezier-ish curve for smooth raising
             const t = 1 - Math.pow(this.equipProgress - 1, 2); // Ease out
             const startY = -0.5;
-            const startRotX = 1.0; 
+            const startRotX = 1.0;
 
             equipOffset.y = startY * (1 - this.equipProgress);
             equipRotation.x = startRotX * (1 - this.equipProgress);
@@ -571,17 +643,17 @@ export class WeaponManager {
         // 4. Procedural Shoot/Recoil Animation (Ranged)
         let recoilOffset = new THREE.Vector3(0, 0, 0);
         let recoilRotation = new THREE.Euler(0, 0, 0);
-        
+
         const now = performance.now() / 1000;
         if (isRangedWeapon(this.currentWeapon) && this.shootAnimStartTime > 0) {
             const timeSinceShoot = now - this.shootAnimStartTime;
             if (timeSinceShoot < this.shootAnimDuration) {
                 const t = timeSinceShoot / this.shootAnimDuration;
-                
+
                 // Impulse: Fast back, slow return
                 // Power curve
-                const kick = Math.sin(t * Math.PI) * (1 - t); 
-                
+                const kick = Math.sin(t * Math.PI) * (1 - t);
+
                 recoilOffset.z = 0.15 * kick; // Kick back
                 recoilOffset.y = 0.02 * kick; // Slight up
                 recoilRotation.x = 0.2 * kick; // Muzzle climb
@@ -598,7 +670,7 @@ export class WeaponManager {
             meleeOffset.x = 0.2; // Right side
             meleeOffset.y = -0.3; // Low enough so we see the blade rise
             meleeOffset.z = -0.3; // Forward
-            
+
             meleeRotation.x = 1.6; // ~90 degrees Up
             meleeRotation.y = -0.3;  // Tilt slightly left (inward)
             meleeRotation.z = -0.1; // Cant
@@ -607,12 +679,12 @@ export class WeaponManager {
                 const timeSinceMelee = now - this.meleeAnimStartTime;
                 if (timeSinceMelee < this.meleeAnimDuration) {
                     const t = timeSinceMelee / this.meleeAnimDuration;
-                    
+
                     // Chop Down Animation (From Up to Forward/Down)
                     if (t < 0.2) {
                         // Wind up: Cock back (Point further up/back)
                         const wt = t / 0.2;
-                        meleeRotation.x = 1.6 + (0.3 * wt); 
+                        meleeRotation.x = 1.6 + (0.3 * wt);
                         meleeOffset.y = -0.3 - (0.1 * wt); // Lower slightly to gather power
                     } else if (t < 0.6) {
                         // Swing: Fast chop Down
@@ -621,7 +693,7 @@ export class WeaponManager {
                         const start = 1.9;
                         const end = 0.2; // Level with horizon
                         meleeRotation.x = start + (end - start) * st;
-                        
+
                         meleeOffset.z = -0.3 - (0.4 * Math.sin(st * Math.PI)); // Reach out
                         meleeOffset.y = -0.3 + (0.1 * st); // Move up slightly as arm extends? or down?
                     } else {
@@ -639,7 +711,7 @@ export class WeaponManager {
         }
 
         // COMBINE TRANSFORMATIONS
-        
+
         // Apply camera quaternion to align with view
         mesh.quaternion.copy(this.camera.quaternion);
 

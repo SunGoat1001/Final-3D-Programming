@@ -56,7 +56,7 @@ export function updateGrenades(deltaTime) {
     }
 }
 function playExplosionSound(position) {
-    const sound = new Audio('/sounds/grenadeExplosion.mp3');
+    const sound = new Audio('sounds/grenadeExplosion.mp3');
 
     // Distance-based volume
     const camPos = camera.position;

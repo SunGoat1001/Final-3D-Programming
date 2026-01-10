@@ -68,7 +68,11 @@ export const WEAPONS = {
         color: 0x4a4a4a,         // Dark gray
         size: { length: 0.8, height: 0.15, width: 0.08 },
         
-        description: 'Súng trường tấn công với tốc độ bắn cao và sát thương ổn định. Hiệu quả ở mọi khoảng cách.'
+        description: 'Súng trường tấn công với tốc độ bắn cao và sát thương ổn định. Hiệu quả ở mọi khoảng cách.',
+        
+        // Positioning
+        positionOffset: { x: 0.25, y: -0.15, z: -0.5 },
+        adsOffset: { x: 0, y: -0.115, z: -0.5 } // Center aligned
     },
 
     // ===========================
@@ -106,7 +110,11 @@ export const WEAPONS = {
         color: 0x654321,         // Brown
         size: { length: 0.9, height: 0.12, width: 0.1 },
         
-        description: 'Shotgun với đa viên đạn mỗi phát bắn. Cực kỳ mạnh ở cự ly gần nhưng yếu ở xa.'
+        description: 'Shotgun với đa viên đạn mỗi phát bắn. Cực kỳ mạnh ở cự ly gần nhưng yếu ở xa.',
+
+        // Positioning
+        positionOffset: { x: 0.25, y: -0.18, z: -0.5 },
+        adsOffset: { x: 0, y: -0.14, z: -0.5 }
     },
 
     // ===========================
@@ -143,7 +151,12 @@ export const WEAPONS = {
         color: 0xc0c0c0,         // Silver
         size: { length: 1.0, height: 0.05, width: 0.15 },
         
-        description: 'Kiếm cận chiến với sát thương cao. Di chuyển nhanh hơn nhưng phải tiếp cận gần mục tiêu.'
+        description: 'Kiếm cận chiến với sát thương cao. Di chuyển nhanh hơn nhưng phải tiếp cận gần mục tiêu.',
+        
+        // Positioning
+        positionOffset: { x: 0.35, y: -0.2, z: -0.6 },
+        rangeOffset: { x: 0.35, y: -0.2, z: -0.5 }, // Same for melee usually
+        adsOffset: { x: 0, y: -0.15, z: -0.6 } // Center but melee doesn't really ADS
     },
     // ===========================
 // GRENADE
@@ -174,7 +187,9 @@ GRENADE: {
     color: 0x228822,
     size: { length: 0.2, height: 0.2, width: 0.2 },
 
-    description: 'Explosive grenade. Deals area damage after delay.'
+    description: 'Explosive grenade. Deals area damage after delay.',
+    positionOffset: { x: 0.2, y: -0.1, z: -0.4 },
+    adsOffset: { x: 0, y: -0.1, z: -0.4 }
 },
 
     

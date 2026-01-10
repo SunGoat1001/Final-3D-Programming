@@ -39,7 +39,7 @@ export function initHitmarker() {
     document.head.appendChild(style);
 
     // Sound
-    hitSound = new Audio('/sounds/hitmarker.mp3');
+    hitSound = new Audio('./sounds/hitmarker.mp3');
     hitSound.volume = 0.6;
 }
 

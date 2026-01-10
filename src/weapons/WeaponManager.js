@@ -54,6 +54,11 @@ export class WeaponManager {
         // Aim Animation State
         this.aimProgress = 0; // 0 = hip, 1 = ads
 
+        // Equip Animation State
+        this.isEquipping = false;
+        this.equipProgress = 0;
+        this.equipDuration = 0.3; // seconds
+
 
         // Callbacks
         this.onShootCallback = null;
@@ -227,6 +232,10 @@ export class WeaponManager {
         // Reset shooting state
         this.canShoot = true;
         this.lastShootTime = 0;
+
+        // Trigger equip animation
+        this.isEquipping = true;
+        this.equipProgress = 0;
 
         // Fire callback
         if (this.onWeaponSwitch) {
@@ -452,6 +461,14 @@ export class WeaponManager {
         // Update aim progress logic
         this._updateAimState(deltaTime);
 
+        // Update equip progress
+        if (this.isEquipping) {
+            this.equipProgress += deltaTime / this.equipDuration;
+            if (this.equipProgress >= 1) {
+                this.equipProgress = 1;
+                this.isEquipping = false;
+            }
+        }
     }
 
     /**
@@ -484,25 +501,85 @@ export class WeaponManager {
         const baseOffset = this.currentWeapon.positionOffset || defaultHip;
         const adsOffset = this.currentWeapon.adsOffset || { ...defaultHip, x: 0 }; // fallback if missing
 
-        // Lerp between Hip and ADS
+        // 1. Base Aim Lerp (Hip <-> ADS)
         const currentLocalOffset = new THREE.Vector3().lerpVectors(
             new THREE.Vector3(baseOffset.x, baseOffset.y, baseOffset.z),
             new THREE.Vector3(adsOffset.x, adsOffset.y, adsOffset.z),
-            this.aimProgress // Linear lerp for now
+            this.aimProgress
         );
 
-        // Apply camera rotation to offset
-        const worldOffset = currentLocalOffset.clone();
-        worldOffset.applyQuaternion(this.camera.quaternion);
+        // 2. Procedural Reload Animation
+        // Sequence: Lower -> Tilt -> Return
+        let reloadRotation = new THREE.Euler(0, 0, 0);
+        let reloadOffset = new THREE.Vector3(0, 0, 0);
 
-        mesh.position.copy(this.camera.position).add(worldOffset);
+        if (this.isReloading) {
+            const p = this.reloadProgress; // 0 to 1
+            
+            if (p < 0.2) {
+                // Phase 1: Lower weapon (0 -> 0.2)
+                const t = p / 0.2;
+                reloadOffset.y = -0.2 * Math.sin(t * Math.PI * 0.5);
+                reloadRotation.x = 0.5 * Math.sin(t * Math.PI * 0.5); // Tilt up
+            } else if (p < 0.8) {
+                // Phase 2: Hold/Shake (0.2 -> 0.8)
+                reloadOffset.y = -0.2;
+                reloadRotation.x = 0.5;
+                
+                // Detailed shake for inserting actions
+                // Just small noise
+                reloadRotation.z = Math.sin(p * 20) * 0.05; 
+                reloadOffset.y += Math.sin(p * 30) * 0.01;
+            } else {
+                // Phase 3: Return (0.8 -> 1.0)
+                const t = (p - 0.8) / 0.2;
+                reloadOffset.y = -0.2 * (1 - t);
+                reloadRotation.x = 0.5 * (1 - t);
+            }
+        }
+
+        // 3. Procedural Equip Animation
+        // Raise from bottom
+        let equipOffset = new THREE.Vector3(0, 0, 0);
+        let equipRotation = new THREE.Euler(0, 0, 0);
+
+        if (this.isEquipping || this.equipProgress < 1) {
+            // Bezier-ish curve for smooth raising
+            const t = 1 - Math.pow(this.equipProgress - 1, 2); // Ease out
+            const startY = -0.5;
+            const startRotX = 1.0; 
+
+            equipOffset.y = startY * (1 - this.equipProgress);
+            equipRotation.x = startRotX * (1 - this.equipProgress);
+        }
+
+        // COMBINE TRANSFORMATIONS
+        
+        // Apply camera quaternion to align with view
         mesh.quaternion.copy(this.camera.quaternion);
 
-        // Add bobbing effect based on reload state
-        if (this.isReloading) {
-            const bobAmount = Math.sin(this.reloadProgress * Math.PI * 2) * 0.05;
-            mesh.position.y += bobAmount;
-        }
+        // Apply local rotations (Equip + Reload + Recoil could go here)
+        // Note: Order matters. We rotate the mesh "locally" relative to camera
+        mesh.rotateX(reloadRotation.x + equipRotation.x);
+        mesh.rotateY(reloadRotation.y);
+        mesh.rotateZ(reloadRotation.z);
+
+        // Combine offsets (Aim + Reload + Equip)
+        // These are strictly local to the camera view
+        const finalLocalPosition = currentLocalOffset.clone()
+            .add(reloadOffset)
+            .add(equipOffset);
+
+        // Transform local position to world space relative to camera
+        const worldOffset = finalLocalPosition.clone();
+        worldOffset.applyQuaternion(this.camera.quaternion);
+
+        // Set final position
+        mesh.position.copy(this.camera.position).add(worldOffset);
+        
+        // Add Bobbing (Movement)
+        // Note: Ideally bobbing is calculated separately in controls or here based on velocity
+        // For now, reload bobbing is replaced by the aim sequence above.
     }
 
     /**

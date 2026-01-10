@@ -36,6 +36,11 @@ export function playSwitchWeapon() {
     playSound('sounds/SwitchWeapon.mp3', 0.5);
 }
 
+export function playGrenadeThrow() {
+
+    playSound('sounds/SwitchWeapon.mp3', 0.6);
+}
+
 export function playEmptyClick() {
     playSound('sounds/emptyGunShoot.mp3', 0.5);
 }

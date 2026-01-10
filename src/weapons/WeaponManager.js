@@ -20,6 +20,7 @@ import {
     playShotgunReload,
     playSwordSwing,
     playSwitchWeapon,
+    playGrenadeThrow,
     playEmptyClick
 } from '../audio.js';
 
@@ -116,7 +117,7 @@ export class WeaponManager {
             SWORD: {
                 path: 'models/sword.glb',
                 position: { x: 0.15, y: -0.7, z: -0.3 },
-                rotation: { x: -Math.PI / 3, y: Math.PI, z:0 },
+                rotation: { x: -Math.PI / 3, y: Math.PI, z: 0 },
                 scale: { x: 0.006, y: 0.006, z: 0.006 }
             },
             GRENADE: {
@@ -385,7 +386,7 @@ export class WeaponManager {
             if (this.currentWeapon.id === 'rifle') playRifleShot();
             if (this.currentWeapon.id === 'shotgun') playShotgunShot();
             if (this.currentWeapon.id === 'sword') playSwordSwing();
-
+            if (this.currentWeapon.id === 'grenade') playGrenadeThrow();
         }
 
         // Trigger animations

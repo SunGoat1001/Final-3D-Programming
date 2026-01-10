@@ -83,7 +83,7 @@ scene.add(helper);
 // MAP MODEL
 // ===========================
 const loader = new GLTFLoader();
-loader.load('/models/map.glb', (gltf) => {
+loader.load('models/map.glb', (gltf) => {
     const map = gltf.scene;
     map.traverse((child) => {
         if (child.isMesh) {

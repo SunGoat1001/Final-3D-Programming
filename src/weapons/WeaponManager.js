@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { getControls } from '../controls.js';
 import {
     WEAPONS,
     WEAPON_SLOTS,
@@ -49,6 +50,10 @@ export class WeaponManager {
         this.isReloading = false;
         this.reloadStartTime = 0;
         this.reloadProgress = 0;
+
+        // Aim Animation State
+        this.aimProgress = 0; // 0 = hip, 1 = ads
+
 
         // Callbacks
         this.onShootCallback = null;
@@ -443,6 +448,28 @@ export class WeaponManager {
                 this._completeReload();
             }
         }
+        
+        // Update aim progress logic
+        this._updateAimState(deltaTime);
+
+    }
+
+    /**
+     * Update aim progress
+     * @param {number} deltaTime
+     */
+    _updateAimState(deltaTime) {
+        const controls = getControls();
+        const isAiming = controls ? controls.isAiming : false;
+
+        // Speed of aim transition
+        const aimSpeed = 8.0; 
+
+        if (isAiming) {
+            this.aimProgress = Math.min(this.aimProgress + deltaTime * aimSpeed, 1);
+        } else {
+            this.aimProgress = Math.max(this.aimProgress - deltaTime * aimSpeed, 0);
+        }
     }
 
     /**
@@ -452,11 +479,23 @@ export class WeaponManager {
         const mesh = this.weaponMeshes[this.currentWeaponId];
         if (!mesh) return;
 
-        // Position weapon in front and to the right of camera
-        const offset = new THREE.Vector3(0.25, -0.15, -0.5);
-        offset.applyQuaternion(this.camera.quaternion);
+        // Get offsets from weapon data or defaults
+        const defaultHip = { x: 0.25, y: -0.15, z: -0.5 };
+        const baseOffset = this.currentWeapon.positionOffset || defaultHip;
+        const adsOffset = this.currentWeapon.adsOffset || { ...defaultHip, x: 0 }; // fallback if missing
 
-        mesh.position.copy(this.camera.position).add(offset);
+        // Lerp between Hip and ADS
+        const currentLocalOffset = new THREE.Vector3().lerpVectors(
+            new THREE.Vector3(baseOffset.x, baseOffset.y, baseOffset.z),
+            new THREE.Vector3(adsOffset.x, adsOffset.y, adsOffset.z),
+            this.aimProgress // Linear lerp for now
+        );
+
+        // Apply camera rotation to offset
+        const worldOffset = currentLocalOffset.clone();
+        worldOffset.applyQuaternion(this.camera.quaternion);
+
+        mesh.position.copy(this.camera.position).add(worldOffset);
         mesh.quaternion.copy(this.camera.quaternion);
 
         // Add bobbing effect based on reload state

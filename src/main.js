@@ -16,6 +16,7 @@ import { updateEnemy } from './enemy.js';
 // Weapon System
 import { WeaponManager } from './weapons/WeaponManager.js';
 import { WeaponUI } from './weapons/WeaponUI.js';
+import { spawnAmmoPickup, updateAmmoPickups } from './ammoPickup.js';
 
 // ===========================
 // PHYSICS SETUP
@@ -31,6 +32,12 @@ initObstacles();
 // PLAYER BODY
 // ===========================
 const sphereBody = createPlayerBody();
+// ===========================
+// AMMO PICKUPS
+// ===========================
+spawnAmmoPickup(new THREE.Vector3(2, 0.5, -5), { weaponId: 'RIFLE', amount: 60 });
+spawnAmmoPickup(new THREE.Vector3(-3, 0.5, -8), { weaponId: 'SHOTGUN', amount: 12 });
+spawnAmmoPickup(new THREE.Vector3(0, 0.5, -12), { weaponId: null, amount: 30 }); // current weapon
 
 // ===========================
 // POINTER LOCK CONTROLS
@@ -119,6 +126,8 @@ function animate() {
 
     // Update enemy visual sync
     updateEnemy();
+// Update ammo pickups
+updateAmmoPickups(sphereBody, weaponManager);
 
     // Render scene
     renderer.render(scene, camera);

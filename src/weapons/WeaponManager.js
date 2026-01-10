@@ -11,6 +11,15 @@ import {
     WeaponType
 } from './WeaponData.js';
 import { scene } from '../scene.js';
+import {
+    playRifleShot,
+    playRifleReload,
+    playShotgunShot,
+    playShotgunReload,
+    playSwordSwing,
+    playSwitchWeapon,
+    playEmptyClick
+} from '../audio.js';
 
 /**
  * WeaponManager - Quản lý vũ khí của người chơi
@@ -190,6 +199,7 @@ export class WeaponManager {
      */
     _equipWeapon(weaponId) {
         const weapon = getWeaponData(weaponId);
+        playSwitchWeapon();
         if (!weapon) {
             console.error(`[WeaponManager] Unknown weapon: ${weaponId}`);
             return;
@@ -254,6 +264,7 @@ export class WeaponManager {
         if (isRangedWeapon(this.currentWeapon)) {
             const ammoState = this.ammoState[this.currentWeaponId];
             if (ammoState.currentAmmo <= 0) {
+                playEmptyClick();
                 // Auto reload when empty
                 this.reload();
                 return null;
@@ -276,6 +287,11 @@ export class WeaponManager {
         // Fire shoot callback
         if (this.onShootCallback) {
             this.onShootCallback(shotData);
+            // Play shoot sound
+        if (this.currentWeapon.id === 'rifle') playRifleShot();
+        if (this.currentWeapon.id === 'shotgun') playShotgunShot();
+        if (this.currentWeapon.id === 'sword') playSwordSwing();
+
         }
 
         return shotData;
@@ -358,6 +374,10 @@ export class WeaponManager {
 
         // Start reload
         this.isReloading = true;
+        // Play reload sound
+        if (this.currentWeapon.id === 'rifle') playRifleReload();
+        if (this.currentWeapon.id === 'shotgun') playShotgunReload();
+
         this.reloadStartTime = performance.now();
         this.reloadProgress = 0;
 

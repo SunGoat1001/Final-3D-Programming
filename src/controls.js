@@ -1,6 +1,15 @@
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
-import { MOUSE_SENSITIVITY, JUMP_VELOCITY, MOVE_FORCE_MULTIPLIER } from './constants.js';
+import {
+    MOUSE_SENSITIVITY,
+    JUMP_VELOCITY,
+    MOVE_FORCE_MULTIPLIER,
+    SPRINT_MULTIPLIER,
+    CROUCH_MULTIPLIER,
+    STANDING_HEIGHT,
+    CROUCHING_HEIGHT,
+    CROUCH_SPEED
+} from './constants.js';
 
 /**
  * PointerLockControlsCannon
@@ -25,6 +34,12 @@ export class PointerLockControlsCannon {
         this.isAiming = false;
         this.targetFOV = 75;
         this.currentFOV = 75;
+
+        // Move speed multiplier
+        this.moveSpeedMultiplier = 1.0;
+        this.isSprinting = false;
+        this.isCrouching = false;
+        this.currentCameraYOffset = STANDING_HEIGHT;
 
         // Euler for camera rotation
         this.euler = new THREE.Euler(0, 0, 0, 'YXZ');
@@ -131,6 +146,12 @@ export class PointerLockControlsCannon {
                 }
                 this.canJump = false;
                 break;
+            case 'ShiftLeft':
+                this.isSprinting = true;
+                break;
+            case 'KeyC':
+                this.isCrouching = !this.isCrouching;
+                break;
         }
     }
 
@@ -147,6 +168,9 @@ export class PointerLockControlsCannon {
                 break;
             case 'KeyD':
                 this.moveRight = false;
+                break;
+            case 'ShiftLeft':
+                this.isSprinting = false;
                 break;
         }
     }
@@ -237,11 +261,13 @@ export class PointerLockControlsCannon {
             worldVelocity.addScaledVector(forward, this.inputVelocity.z);
             worldVelocity.addScaledVector(right, this.inputVelocity.x);
 
+
             // Apply force to sphere body (force-based movement)
+            const finalForceMultiplier = MOVE_FORCE_MULTIPLIER * this.moveSpeedMultiplier * stateMultiplier;
             const force = new CANNON.Vec3(
-                worldVelocity.x * this.sphereBody.mass * MOVE_FORCE_MULTIPLIER,
+                worldVelocity.x * this.sphereBody.mass * finalForceMultiplier,
                 0,
-                worldVelocity.z * this.sphereBody.mass * MOVE_FORCE_MULTIPLIER
+                worldVelocity.z * this.sphereBody.mass * finalForceMultiplier
             );
             this.sphereBody.applyForce(force);
         }
@@ -260,5 +286,6 @@ export class PointerLockControlsCannon {
 
         // Sync camera position to sphere body
         this.camera.position.copy(this.sphereBody.position);
+        this.camera.position.y += this.currentCameraYOffset;
     }
 }

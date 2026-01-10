@@ -8,6 +8,7 @@ import { getEnemyMesh, hitEnemy } from './enemy.js';
 import { isRangedWeapon, isMeleeWeapon } from './weapons/WeaponData.js';
 import { throwGrenade } from './grenade.js';
 import { showHitmarker } from './hitmarker.js';
+import { addShootKick } from './crosshair.js';
 
 
 const bullets = [];
@@ -18,6 +19,7 @@ const bullets = [];
  */
 export function processShot(shotData) {
     if (!shotData) return;
+       addShootKick(); 
 if (shotData.weapon.id === 'grenade') {
     const shot = shotData.shots[0];
     throwGrenade(shot.origin, shot.direction, shot.bulletSpeed);

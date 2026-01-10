@@ -36,27 +36,53 @@ canvas {
   transform: translate(-50%, -50%);
   pointer-events: none;
   z-index: 100;
+  --spread: 8px;
 }
 
 .crosshair-line {
-  background: rgba(255, 255, 255, 0.8);
   position: absolute;
+  background: rgba(255, 255, 255, 0.85);
 }
 
-.crosshair-horizontal {
-  width: 20px;
-  height: 2px;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-}
-
-.crosshair-vertical {
+/* Top */
+.crosshair-line.top {
   width: 2px;
-  height: 20px;
-  top: 50%;
+  height: 12px;
   left: 50%;
-  transform: translate(-50%, -50%);
+  top: 50%;
+  transform: translate(-50%, calc(-100% - var(--spread)));
+}
+
+/* Bottom */
+.crosshair-line.bottom {
+  width: 2px;
+  height: 12px;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, var(--spread));
+}
+
+/* Left */
+.crosshair-line.left {
+  width: 12px;
+  height: 2px;
+  left: 50%;
+  top: 50%;
+  transform: translate(calc(-100% - var(--spread)), -50%);
+}
+
+/* Right */
+.crosshair-line.right {
+  width: 12px;
+  height: 2px;
+  left: 50%;
+  top: 50%;
+  transform: translate(var(--spread), -50%);
+}
+
+/* Khi ADS thì nhỏ lại */
+#crosshair.aiming {
+  opacity: 0.9;
 }
 
 /* Instructions overlay */

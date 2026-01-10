@@ -20,7 +20,7 @@ import { spawnAmmoPickup, updateAmmoPickups } from './ammoPickup.js';
 import { updateGrenades } from './grenade.js';
 import { startScreenShake, updateScreenShake } from './screenShake.js';
 import { initHitmarker } from './hitmarker.js';
-
+import { updateCrosshair } from './crosshair.js';
 // ===========================
 // PHYSICS SETUP
 // ===========================
@@ -117,7 +117,8 @@ function animate() {
 
     // Update controls (applies forces to sphere body)
     controls.update(deltaTime);
-
+  // Update crosshair dynamic
+    updateCrosshair(deltaTime);
     // Update weapon manager (handles reload, weapon position)
     weaponManager.update(deltaTime);
 

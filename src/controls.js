@@ -10,6 +10,7 @@ import {
     CROUCHING_HEIGHT,
     CROUCH_SPEED
 } from './constants.js';
+import { setMoveAmount } from './crosshair.js';
 
 /**
  * PointerLockControlsCannon
@@ -17,6 +18,7 @@ import {
  */
 export class PointerLockControlsCannon {
     constructor(camera, sphereBody) {
+         _controlsInstance = this; 
         this.camera = camera;
         this.sphereBody = sphereBody;
 
@@ -304,5 +306,22 @@ export class PointerLockControlsCannon {
         // Sync camera position to sphere body
         this.camera.position.copy(this.sphereBody.position);
         this.camera.position.y += this.currentCameraYOffset;
+        // Movement amount for crosshair
+        const horizontalSpeed = Math.sqrt(
+            this.sphereBody.velocity.x * this.sphereBody.velocity.x +
+            this.sphereBody.velocity.z * this.sphereBody.velocity.z
+        );
+
+        // Normalize ~ 0 → 1
+        const move01 = Math.min(horizontalSpeed / 6, 1);
+        setMoveAmount(move01);
+
     }
 }
+let _controlsInstance = null;
+
+export function getControls() {
+    return _controlsInstance;
+}
+
+

@@ -6,7 +6,7 @@ import * as THREE from 'three';
 // ===========================
 import { scene, camera, renderer } from './scene.js';
 import { world } from './physics.js';
-import { createPlayerBody } from './player.js';
+import { createPlayerBody, updateHealthUI } from './player.js';
 import { PointerLockControlsCannon } from './controls.js';
 import { FIXED_TIME_STEP, MAX_SUB_STEPS } from './constants.js';
 import { processShot, updateBullets } from './shooting.js';
@@ -36,6 +36,7 @@ initHitmarker();
 // PLAYER BODY
 // ===========================
 const sphereBody = createPlayerBody();
+updateHealthUI();
 // ===========================
 // AMMO PICKUPS
 // ===========================

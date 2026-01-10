@@ -11,7 +11,7 @@ export const CAMERA_FAR = 1000;
 export const PLAYER_RADIUS = 0.5;  // Sphere radius
 export const PLAYER_MASS = 20;       // Mass in kg
 export const PLAYER_START_POSITION = { x: 0, y: 5, z: 0 };
-export const MOVE_FORCE_MULTIPLIER = 50;  // Force multiplier for movement
+export const MOVE_FORCE_MULTIPLIER = 35;  // Force multiplier for movement
 
 // Controls
 export const MOUSE_SENSITIVITY = 0.002;

@@ -6,6 +6,8 @@ import { BULLET_RADIUS } from './constants.js';
 import { getObstaclesMeshes } from './obstacles.js';
 import { getEnemyMesh, hitEnemy } from './enemy.js';
 import { isRangedWeapon, isMeleeWeapon } from './weapons/WeaponData.js';
+import { throwGrenade } from './grenade.js';
+
 
 const bullets = [];
 
@@ -15,6 +17,11 @@ const bullets = [];
  */
 export function processShot(shotData) {
     if (!shotData) return;
+if (shotData.weapon.id === 'grenade') {
+    const shot = shotData.shots[0];
+    throwGrenade(shot.origin, shot.direction, shot.bulletSpeed);
+    return;
+}
 
     if (shotData.isRanged) {
         // Process ranged weapon shots (bullets/pellets)

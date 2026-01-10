@@ -144,8 +144,42 @@ export const WEAPONS = {
         size: { length: 1.0, height: 0.05, width: 0.15 },
         
         description: 'Kiếm cận chiến với sát thương cao. Di chuyển nhanh hơn nhưng phải tiếp cận gần mục tiêu.'
-    }
+    },
+    // ===========================
+// GRENADE
+// ===========================
+GRENADE: {
+    id: 'grenade',
+    name: 'Grenade',
+    type: WeaponType.RANGED,
+
+    damage: 120,
+    damageMax: 160,
+
+    fireRate: 0.8,
+
+    maxAmmo: 1,
+    reserveAmmo: 5,
+
+    reloadTime: 1.0,
+
+    moveSpeedMultiplier: 0.7,
+
+    range: 15,
+    pellets: 1,
+    spread: 0,
+
+    bulletSpeed: 15, // throw force
+
+    color: 0x228822,
+    size: { length: 0.2, height: 0.2, width: 0.2 },
+
+    description: 'Explosive grenade. Deals area damage after delay.'
+},
+
+    
 };
+
 
 /**
  * Weapon Slot Assignments
@@ -154,7 +188,9 @@ export const WEAPONS = {
 export const WEAPON_SLOTS = {
     1: 'RIFLE',      // Key 1 = Rifle
     2: 'SHOTGUN',    // Key 2 = Shotgun  
-    3: 'SWORD'       // Key 3 = Sword
+    3: 'SWORD'  ,    // Key 3 = Sword
+    4: 'GRENADE'
+
 };
 
 /**

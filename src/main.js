@@ -17,6 +17,9 @@ import { updateEnemy } from './enemy.js';
 import { WeaponManager } from './weapons/WeaponManager.js';
 import { WeaponUI } from './weapons/WeaponUI.js';
 import { spawnAmmoPickup, updateAmmoPickups } from './ammoPickup.js';
+import { updateGrenades } from './grenade.js';
+import { startScreenShake, updateScreenShake } from './screenShake.js';
+
 
 // ===========================
 // PHYSICS SETUP
@@ -78,7 +81,11 @@ weaponUI.updateWeaponInfo(weaponManager.getWeaponInfo());
 
 // Set shoot callback - now uses WeaponManager
 controls.onShoot = () => {
-    weaponManager.tryShoot();
+    const shot = weaponManager.tryShoot();
+    if (shot) {
+        // Screen shake when shooting 
+        startScreenShake(0.08, 0.1);
+    }
 };
 
 // ===========================
@@ -112,6 +119,12 @@ function animate() {
 
     // Update weapon manager (handles reload, weapon position)
     weaponManager.update(deltaTime);
+
+    //Update Grenades
+    updateGrenades(deltaTime);
+    //Screen shake
+    updateScreenShake(camera, deltaTime);
+
 
     // Update reload UI
     if (weaponManager.isReloading) {

@@ -7,6 +7,7 @@ import { getObstaclesMeshes } from './obstacles.js';
 import { getEnemyMesh, hitEnemy } from './enemy.js';
 import { isRangedWeapon, isMeleeWeapon } from './weapons/WeaponData.js';
 import { throwGrenade } from './grenade.js';
+import { showHitmarker } from './hitmarker.js';
 
 
 const bullets = [];
@@ -101,6 +102,7 @@ function processMeleeAttack(shotData) {
         const enemyHits = raycaster.intersectObject(enemyMesh, false);
         if (enemyHits.length > 0) {
             hitEnemy(shot.damage);
+            showHitmarker();
             createMeleeHitEffect(enemyHits[0].point);
             console.log(`[Melee] Hit enemy for ${shot.damage.toFixed(1)} damage!`);
         }
@@ -264,6 +266,7 @@ export function updateBullets(deltaTime) {
                 if (enemyHits.length > 0) {
                     // Use bullet's damage value
                     hitEnemy(bullet.damage || 10);
+                    showHitmarker();
                     scene.remove(bullet.mesh);
                     world.removeBody(bullet.body);
                     bullets.splice(i, 1);

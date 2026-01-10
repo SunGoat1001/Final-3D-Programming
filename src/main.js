@@ -19,7 +19,7 @@ import { WeaponUI } from './weapons/WeaponUI.js';
 import { spawnAmmoPickup, updateAmmoPickups } from './ammoPickup.js';
 import { updateGrenades } from './grenade.js';
 import { startScreenShake, updateScreenShake } from './screenShake.js';
-
+import { initHitmarker } from './hitmarker.js';
 
 // ===========================
 // PHYSICS SETUP
@@ -31,6 +31,7 @@ import { startScreenShake, updateScreenShake } from './screenShake.js';
 // ===========================
 initObstacles();
 
+initHitmarker();  
 // ===========================
 // PLAYER BODY
 // ===========================

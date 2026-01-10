@@ -3,6 +3,7 @@ import * as CANNON from 'cannon-es';
 import { scene } from './scene.js';
 import { world, defaultMaterial } from './physics.js';
 import { getEnemyMesh, hitEnemy } from './enemy.js';
+import { camera } from './scene.js';
 
 const grenades = [];
 
@@ -54,8 +55,24 @@ export function updateGrenades(deltaTime) {
         }
     }
 }
+function playExplosionSound(position) {
+    const sound = new Audio('/sounds/grenadeExplosion.mp3');
+
+    // Distance-based volume
+    const camPos = camera.position;
+    const dist = camPos.distanceTo(new THREE.Vector3(position.x, position.y, position.z));
+
+    const maxDist = 30; // xa hơn thì gần như không nghe
+    let volume = 1 - dist / maxDist;
+    volume = Math.max(0, Math.min(1, volume));
+
+    sound.volume = volume;
+    sound.play();
+}
 
 function explode(grenade, index) {
+    playExplosionSound(grenade.body.position);
+
     grenade.exploded = true;
 
     const pos = grenade.body.position;

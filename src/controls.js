@@ -260,6 +260,14 @@ export class PointerLockControlsCannon {
             const worldVelocity = new THREE.Vector3();
             worldVelocity.addScaledVector(forward, this.inputVelocity.z);
             worldVelocity.addScaledVector(right, this.inputVelocity.x);
+            
+                        // Calculate state multiplier (sprint/crouch)
+            let stateMultiplier = 1.0;
+            if (this.isCrouching) {
+                stateMultiplier = CROUCH_MULTIPLIER;
+            } else if (this.isSprinting) {
+                stateMultiplier = SPRINT_MULTIPLIER;
+            }
 
 
             // Apply force to sphere body (force-based movement)
@@ -282,6 +290,15 @@ export class PointerLockControlsCannon {
             this.currentFOV = this.targetFOV;
             this.camera.fov = this.currentFOV;
             this.camera.updateProjectionMatrix();
+        }
+
+              // Interpolate camera height for crouching
+        const targetYOffset = this.isCrouching ? CROUCHING_HEIGHT : STANDING_HEIGHT;
+        const yDiff = targetYOffset - this.currentCameraYOffset;
+        if (Math.abs(yDiff) > 0.01) {
+            this.currentCameraYOffset += yDiff * CROUCH_SPEED;
+        } else {
+            this.currentCameraYOffset = targetYOffset;
         }
 
         // Sync camera position to sphere body

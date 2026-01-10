@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { getControls } from '../controls.js';
 import {
     WEAPONS,
     WEAPON_SLOTS,
@@ -49,6 +50,21 @@ export class WeaponManager {
         this.isReloading = false;
         this.reloadStartTime = 0;
         this.reloadProgress = 0;
+
+        // Aim Animation State
+        this.aimProgress = 0; // 0 = hip, 1 = ads
+
+        // Equip Animation State
+        this.isEquipping = false;
+        this.equipProgress = 0;
+        this.equipDuration = 0.3; // seconds
+
+        // Animation States
+        this.shootAnimStartTime = 0;
+        this.meleeAnimStartTime = 0;
+        this.shootAnimDuration = 0.15; // fast recoil
+        this.meleeAnimDuration = 0.4; // sword swing duration
+
 
         // Callbacks
         this.onShootCallback = null;
@@ -222,6 +238,12 @@ export class WeaponManager {
         // Reset shooting state
         this.canShoot = true;
         this.lastShootTime = 0;
+        this.shootAnimStartTime = 0;
+        this.meleeAnimStartTime = 0;
+
+        // Trigger equip animation
+        this.isEquipping = true;
+        this.equipProgress = 0;
 
         // Fire callback
         if (this.onWeaponSwitch) {
@@ -292,6 +314,13 @@ export class WeaponManager {
         if (this.currentWeapon.id === 'shotgun') playShotgunShot();
         if (this.currentWeapon.id === 'sword') playSwordSwing();
 
+        }
+
+        // Trigger animations
+        if (isRangedWeapon(this.currentWeapon)) {
+            this.shootAnimStartTime = now;
+        } else if (isMeleeWeapon(this.currentWeapon)) {
+            this.meleeAnimStartTime = now;
         }
 
         return shotData;
@@ -443,6 +472,36 @@ export class WeaponManager {
                 this._completeReload();
             }
         }
+        
+        // Update aim progress logic
+        this._updateAimState(deltaTime);
+
+        // Update equip progress
+        if (this.isEquipping) {
+            this.equipProgress += deltaTime / this.equipDuration;
+            if (this.equipProgress >= 1) {
+                this.equipProgress = 1;
+                this.isEquipping = false;
+            }
+        }
+    }
+
+    /**
+     * Update aim progress
+     * @param {number} deltaTime
+     */
+    _updateAimState(deltaTime) {
+        const controls = getControls();
+        const isAiming = controls ? controls.isAiming : false;
+
+        // Speed of aim transition
+        const aimSpeed = 8.0; 
+
+        if (isAiming) {
+            this.aimProgress = Math.min(this.aimProgress + deltaTime * aimSpeed, 1);
+        } else {
+            this.aimProgress = Math.max(this.aimProgress - deltaTime * aimSpeed, 0);
+        }
     }
 
     /**
@@ -452,18 +511,158 @@ export class WeaponManager {
         const mesh = this.weaponMeshes[this.currentWeaponId];
         if (!mesh) return;
 
-        // Position weapon in front and to the right of camera
-        const offset = new THREE.Vector3(0.25, -0.15, -0.5);
-        offset.applyQuaternion(this.camera.quaternion);
+        // Get offsets from weapon data or defaults
+        const defaultHip = { x: 0.25, y: -0.15, z: -0.5 };
+        const baseOffset = this.currentWeapon.positionOffset || defaultHip;
+        const adsOffset = this.currentWeapon.adsOffset || { ...defaultHip, x: 0 }; // fallback if missing
 
-        mesh.position.copy(this.camera.position).add(offset);
+        // 1. Base Aim Lerp (Hip <-> ADS)
+        const currentLocalOffset = new THREE.Vector3().lerpVectors(
+            new THREE.Vector3(baseOffset.x, baseOffset.y, baseOffset.z),
+            new THREE.Vector3(adsOffset.x, adsOffset.y, adsOffset.z),
+            this.aimProgress
+        );
+
+        // 2. Procedural Reload Animation
+        // Sequence: Lower -> Tilt -> Return
+        let reloadRotation = new THREE.Euler(0, 0, 0);
+        let reloadOffset = new THREE.Vector3(0, 0, 0);
+
+        if (this.isReloading) {
+            const p = this.reloadProgress; // 0 to 1
+            
+            if (p < 0.2) {
+                // Phase 1: Lower weapon (0 -> 0.2)
+                const t = p / 0.2;
+                reloadOffset.y = -0.2 * Math.sin(t * Math.PI * 0.5);
+                reloadRotation.x = 0.5 * Math.sin(t * Math.PI * 0.5); // Tilt up
+            } else if (p < 0.8) {
+                // Phase 2: Hold/Shake (0.2 -> 0.8)
+                reloadOffset.y = -0.2;
+                reloadRotation.x = 0.5;
+                
+                // Detailed shake for inserting actions
+                // Just small noise
+                reloadRotation.z = Math.sin(p * 20) * 0.05; 
+                reloadOffset.y += Math.sin(p * 30) * 0.01;
+            } else {
+                // Phase 3: Return (0.8 -> 1.0)
+                const t = (p - 0.8) / 0.2;
+                reloadOffset.y = -0.2 * (1 - t);
+                reloadRotation.x = 0.5 * (1 - t);
+            }
+        }
+
+        // 3. Procedural Equip Animation
+        // Raise from bottom
+        let equipOffset = new THREE.Vector3(0, 0, 0);
+        let equipRotation = new THREE.Euler(0, 0, 0);
+
+        if (this.isEquipping || this.equipProgress < 1) {
+            // Bezier-ish curve for smooth raising
+            const t = 1 - Math.pow(this.equipProgress - 1, 2); // Ease out
+            const startY = -0.5;
+            const startRotX = 1.0; 
+
+            equipOffset.y = startY * (1 - this.equipProgress);
+            equipRotation.x = startRotX * (1 - this.equipProgress);
+        }
+
+        // 4. Procedural Shoot/Recoil Animation (Ranged)
+        let recoilOffset = new THREE.Vector3(0, 0, 0);
+        let recoilRotation = new THREE.Euler(0, 0, 0);
+        
+        const now = performance.now() / 1000;
+        if (isRangedWeapon(this.currentWeapon) && this.shootAnimStartTime > 0) {
+            const timeSinceShoot = now - this.shootAnimStartTime;
+            if (timeSinceShoot < this.shootAnimDuration) {
+                const t = timeSinceShoot / this.shootAnimDuration;
+                
+                // Impulse: Fast back, slow return
+                // Power curve
+                const kick = Math.sin(t * Math.PI) * (1 - t); 
+                
+                recoilOffset.z = 0.15 * kick; // Kick back
+                recoilOffset.y = 0.02 * kick; // Slight up
+                recoilRotation.x = 0.2 * kick; // Muzzle climb
+            }
+        }
+
+        // 5. Procedural Melee Swing Animation (Sword)
+        let meleeOffset = new THREE.Vector3(0, 0, 0);
+        let meleeRotation = new THREE.Euler(0, 0, 0);
+
+        if (isMeleeWeapon(this.currentWeapon)) {
+            // Base Idle Rotation ("Pointing to Sky")
+            // Blade is at -Z (Forward). We need Positive X rotation to point it Up (+Y).
+            meleeOffset.x = 0.2; // Right side
+            meleeOffset.y = -0.3; // Low enough so we see the blade rise
+            meleeOffset.z = -0.3; // Forward
+            
+            meleeRotation.x = 1.6; // ~90 degrees Up
+            meleeRotation.y = -0.3;  // Tilt slightly left (inward)
+            meleeRotation.z = -0.1; // Cant
+
+            if (this.meleeAnimStartTime > 0) {
+                const timeSinceMelee = now - this.meleeAnimStartTime;
+                if (timeSinceMelee < this.meleeAnimDuration) {
+                    const t = timeSinceMelee / this.meleeAnimDuration;
+                    
+                    // Chop Down Animation (From Up to Forward/Down)
+                    if (t < 0.2) {
+                        // Wind up: Cock back (Point further up/back)
+                        const wt = t / 0.2;
+                        meleeRotation.x = 1.6 + (0.3 * wt); 
+                        meleeOffset.y = -0.3 - (0.1 * wt); // Lower slightly to gather power
+                    } else if (t < 0.6) {
+                        // Swing: Fast chop Down
+                        // From 1.9 (Up/Back) to 0.0 (Forward)
+                        const st = (t - 0.2) / 0.4;
+                        const start = 1.9;
+                        const end = 0.2; // Level with horizon
+                        meleeRotation.x = start + (end - start) * st;
+                        
+                        meleeOffset.z = -0.3 - (0.4 * Math.sin(st * Math.PI)); // Reach out
+                        meleeOffset.y = -0.3 + (0.1 * st); // Move up slightly as arm extends? or down?
+                    } else {
+                        // Recovery: Return to Up
+                        const rt = (t - 0.6) / 0.4;
+                        const start = 0.2;
+                        const end = 1.6;
+                        // Ease out
+                        const ease = 1 - Math.pow(1 - rt, 2);
+                        meleeRotation.x = start + (end - start) * ease;
+                        meleeOffset.z = -0.3 * (1 - ease) - 0.3;
+                    }
+                }
+            }
+        }
+
+        // COMBINE TRANSFORMATIONS
+        
+        // Apply camera quaternion to align with view
         mesh.quaternion.copy(this.camera.quaternion);
 
-        // Add bobbing effect based on reload state
-        if (this.isReloading) {
-            const bobAmount = Math.sin(this.reloadProgress * Math.PI * 2) * 0.05;
-            mesh.position.y += bobAmount;
-        }
+        // Apply local rotations (Equip + Reload + Recoil + Melee)
+        // Note: Order matters. We rotate the mesh "locally" relative to camera
+        mesh.rotateX(reloadRotation.x + equipRotation.x + recoilRotation.x + meleeRotation.x);
+        mesh.rotateY(reloadRotation.y + meleeRotation.y);
+        mesh.rotateZ(reloadRotation.z + meleeRotation.z);
+
+        // Combine offsets (Aim + Reload + Equip + Recoil + Melee)
+        // These are strictly local to the camera view
+        const finalLocalPosition = currentLocalOffset.clone()
+            .add(reloadOffset)
+            .add(equipOffset)
+            .add(recoilOffset)
+            .add(meleeOffset);
+
+        // Transform local position to world space relative to camera
+        const worldOffset = finalLocalPosition.clone();
+        worldOffset.applyQuaternion(this.camera.quaternion);
+
+        // Set final position
+        mesh.position.copy(this.camera.position).add(worldOffset);
     }
 
     /**

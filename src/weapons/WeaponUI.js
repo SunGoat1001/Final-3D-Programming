@@ -131,7 +131,7 @@ export class WeaponUI {
             color: #666;
             margin-top: 5px;
         `;
-        this.controlsHint.innerHTML = '[1][2][3][4] Switch | [R] Reload | [V] Fire Mode';
+        this.controlsHint.innerHTML = '[1][2][3][4][5] Switch | [R] Reload | [V] Fire Mode';
         this.container.appendChild(this.controlsHint);
 
         document.body.appendChild(this.container);
@@ -144,8 +144,9 @@ export class WeaponUI {
         const slots = [
             { key: '1', name: 'Rifle' },
             { key: '2', name: 'Shotgun' },
-            { key: '3', name: 'Sword' },
-            { key: '4', name: 'Grenade' }
+            { key: '3', name: 'Bazooka' },
+            { key: '4', name: 'Sword' },
+            { key: '5', name: 'Grenade' }
         ];
 
         this.slotElements = {};
@@ -233,8 +234,9 @@ export class WeaponUI {
             const isActive =
                 (key === '1' && info.name.includes('Rifle')) ||
                 (key === '2' && info.name.includes('Shotgun')) ||
-                (key === '3' && info.name.includes('Sword')) ||
-                (key === '4' && info.name.includes('Grenade'));
+                (key === '3' && info.name.includes('Bazooka')) ||
+                (key === '4' && info.name.includes('Sword')) ||
+                (key === '5' && info.name.includes('Grenade'));
 
             if (isActive) {
                 el.style.borderColor = '#ffaa00';

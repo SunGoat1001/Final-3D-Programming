@@ -11,6 +11,7 @@ import { showHitmarker } from "./hitmarker.js";
 import { addShootKick } from "./crosshair.js";
 import { spawnImpactEffect } from "./impactEffect.js";
 import { spawnMuzzleFlash } from './muzzleFlash.js';
+import { spawnRocket } from './rocket.js';
 const bullets = [];
 
 /**
@@ -18,24 +19,30 @@ const bullets = [];
  * @param {Object} shotData - Shot data containing weapon and shot info
  */
 export function processShot(shotData) {
-// === MUZZLE FLASH (REAL WEAPON POSITION) ===
-if (shotData.isRanged && shotData.shots.length > 0 && shotData.weaponManager) {
+  // === MUZZLE FLASH (REAL WEAPON POSITION) ===
+  if (shotData.isRanged && shotData.shots.length > 0 && shotData.weaponManager) {
     const muzzlePos = shotData.weaponManager.getMuzzleWorldPosition();
     if (muzzlePos) {
-        const dir = shotData.shots[0].direction.clone();
-        spawnMuzzleFlash(
-            muzzlePos,
-            dir,
-            shotData.weapon.id === 'shotgun' ? 2.0 : 1.0
-        );
+      const dir = shotData.shots[0].direction.clone();
+      spawnMuzzleFlash(
+        muzzlePos,
+        dir,
+        shotData.weapon.id === 'shotgun' ? 2.0 : 1.0
+      );
     }
-}
+  }
 
   if (!shotData) return;
   addShootKick();
   if (shotData.weapon.id === "grenade") {
     const shot = shotData.shots[0];
     throwGrenade(shot.origin, shot.direction, shot.bulletSpeed);
+    return;
+  }
+
+  if (shotData.weapon.id === "bazooka") {
+    const shot = shotData.shots[0];
+    spawnRocket(shot.origin, shot.direction, shot.bulletSpeed, shot.damage);
     return;
   }
 

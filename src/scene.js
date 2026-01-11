@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { FOV, CAMERA_NEAR, CAMERA_FAR } from './constants.js';
+import { FOV, CAMERA_NEAR, CAMERA_FAR, WORLD_SCALE } from './constants.js';
 
 // ===========================
 // SCENE SETUP
@@ -92,7 +92,7 @@ loader.load('models/map.glb', (gltf) => {
             // child.material.envMapIntensity = 0.3; 
         }
     });
-    map.scale.set(1, 1, 1)
+    map.scale.set(WORLD_SCALE, WORLD_SCALE, WORLD_SCALE)
     scene.add(map);
 }, undefined, (error) => {
     console.error('Error loading map:', error);

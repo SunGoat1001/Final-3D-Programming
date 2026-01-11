@@ -128,14 +128,14 @@ export class WeaponManager {
                 position: { x: 0, y: -0.05, z: 0.1 },
                 rotation: { x: 0, y: Math.PI, z: 0 },
                 scale: { x: 0.08, y: 0.08, z: 0.08 },
-                muzzle: { x: 0.05, y: 0.0005, z: -0.9 } 
+                muzzle: { x: 0.05, y: 0.0005, z: -0.9 }
             },
             SHOTGUN: {
                 path: 'models/shotgun.glb',
                 position: { x: 0.05, y: -0.25, z: 0.2 },
                 rotation: { x: 0, y: Math.PI, z: 0 },
                 scale: { x: 0.07, y: 0.07, z: 0.07 },
-                muzzle: { x: 0.1, y: 0.03, z: -1.4 }   
+                muzzle: { x: 0.1, y: 0.03, z: -1.4 }
             },
             SWORD: {
                 path: 'models/sword.glb',
@@ -218,7 +218,7 @@ export class WeaponManager {
         const loader = new GLTFLoader();
         loader.load('models/messi_character.glb', (gltf) => {
             this.playerModel = gltf.scene;
-            
+
             // Adjust scale/position
             // FPS Camera is usually at eye level (1.6m). The model needs to be lowered so eyes match camera.
             // Model origin is usually at feet.
@@ -227,7 +227,7 @@ export class WeaponManager {
             this.playerModel.scale.set(0.020, 0.020, 0.020);
 
             // FPS Camera at 1.6m eye level
-            this.playerModel.position.set(0, -1.6, 0); 
+            this.playerModel.position.set(0, -1.6, 0);
             // Rotate to face forward (Camera looks -Z, Model usually faces +Z)
             this.playerModel.rotation.y = Math.PI;
 
@@ -239,40 +239,40 @@ export class WeaponManager {
                 // Find Right Arm chain
                 if (child.isBone) {
                     const name = child.name.toLowerCase();
-                    
+
                     // Right Arm
                     if (!this.rightArmBone && (name.includes('rightarm') || name.includes('arm_r') || name.includes('mixamorig:rightarm'))) {
-                         this.rightArmBone = child;
+                        this.rightArmBone = child;
                     }
                     if (!this.rightForeArmBone && (name.includes('rightforearm') || name.includes('forearm_r') || name.includes('mixamorig:rightforearm'))) {
-                         this.rightForeArmBone = child;
+                        this.rightForeArmBone = child;
                     }
 
                     // Left Arm
                     if (!this.leftArmBone && (name.includes('leftarm') || name.includes('arm_l') || name.includes('mixamorig:leftarm'))) {
-                         this.leftArmBone = child;
+                        this.leftArmBone = child;
                     }
                     if (!this.leftForeArmBone && (name.includes('leftforearm') || name.includes('forearm_l') || name.includes('mixamorig:leftforearm'))) {
-                         this.leftForeArmBone = child;
+                        this.leftForeArmBone = child;
                     }
                 }
-                
+
                 // Find Right Hand Bone
                 if (child.isBone && !this.rightHandBone) {
-                   const name = child.name.toLowerCase();
-                   if (name.includes('righthand') || name.includes('hand_r') || name.includes('mixamorig:righthand')) {
-                       this.rightHandBone = child;
-                       console.log(`[WeaponManager] Found Right Hand Bone: ${child.name}`);
-                   }
+                    const name = child.name.toLowerCase();
+                    if (name.includes('righthand') || name.includes('hand_r') || name.includes('mixamorig:righthand')) {
+                        this.rightHandBone = child;
+                        console.log(`[WeaponManager] Found Right Hand Bone: ${child.name}`);
+                    }
                 }
-                
+
                 // Find Left Hand Bone
                 if (child.isBone && !this.leftHandBone) {
-                   const name = child.name.toLowerCase();
-                   if (name.includes('lefthand') || name.includes('hand_l') || name.includes('mixamorig:lefthand')) {
-                       this.leftHandBone = child;
-                       console.log(`[WeaponManager] Found Left Hand Bone: ${child.name}`);
-                   }
+                    const name = child.name.toLowerCase();
+                    if (name.includes('lefthand') || name.includes('hand_l') || name.includes('mixamorig:lefthand')) {
+                        this.leftHandBone = child;
+                        console.log(`[WeaponManager] Found Left Hand Bone: ${child.name}`);
+                    }
                 }
             });
 
@@ -283,12 +283,12 @@ export class WeaponManager {
 
             // Add model to SCENE so it casts proper shadows and stays upright
             scene.add(this.playerModel);
-            
+
             console.log('[WeaponManager] Player model loaded');
 
             // Notify UI
             if (this.onCharacterLoaded) {
-                 this.onCharacterLoaded('Messi Character');
+                this.onCharacterLoaded('Messi Character');
             }
 
         }, undefined, (err) => {
@@ -380,7 +380,31 @@ export class WeaponManager {
             if (event.code === 'KeyR') {
                 this.reload();
             }
+
+            // Toggle Fire Mode with V key
+            if (event.code === 'KeyV') {
+                this.toggleFireMode();
+            }
         });
+    }
+
+    /**
+     * Toggle between available fire modes for the current weapon
+     */
+    toggleFireMode() {
+        const weapon = this.currentWeapon;
+        if (!weapon.fireModes || weapon.fireModes.length <= 1) return;
+
+        const currentIndex = weapon.fireModes.indexOf(weapon.fireMode);
+        const nextIndex = (currentIndex + 1) % weapon.fireModes.length;
+        weapon.fireMode = weapon.fireModes[nextIndex];
+
+        console.log(`[WeaponManager] Fire mode switched to: ${weapon.fireMode}`);
+
+        // Notify UI/Main
+        if (this.onAmmoChange) {
+            this.onAmmoChange(this.getAmmoState());
+        }
     }
 
     /**
@@ -443,25 +467,25 @@ export class WeaponManager {
         console.log(`[WeaponManager] Equipped: ${weapon.name}`);
     }
     _checkLowAmmo() {
-    if (!isRangedWeapon(this.currentWeapon)) {
-        this.isLowAmmo = false;
-        return;
-    }
+        if (!isRangedWeapon(this.currentWeapon)) {
+            this.isLowAmmo = false;
+            return;
+        }
 
-    const ammo = this.ammoState[this.currentWeaponId].currentAmmo;
-    const threshold = this.currentWeapon.lowAmmoThreshold ?? 0;
+        const ammo = this.ammoState[this.currentWeaponId].currentAmmo;
+        const threshold = this.currentWeapon.lowAmmoThreshold ?? 0;
 
-    const newState = ammo <= threshold;
+        const newState = ammo <= threshold;
 
-    if (newState !== this.isLowAmmo) {
-        this.isLowAmmo = newState;
+        if (newState !== this.isLowAmmo) {
+            this.isLowAmmo = newState;
 
-        // Notify UI
-        if (this.onAmmoChange) {
-            this.onAmmoChange(this.getAmmoState());
+            // Notify UI
+            if (this.onAmmoChange) {
+                this.onAmmoChange(this.getAmmoState());
+            }
         }
     }
-}
 
 
     /**
@@ -479,21 +503,23 @@ export class WeaponManager {
 
     /**
      * Attempt to shoot the current weapon
+     * Handles fire rate cooldown, ammo consumption, and shot generation
      * @returns {Object|null} Shot data or null if can't shoot
      */
     tryShoot() {
-        // Can't shoot while reloading
+        // 1. Can't shoot while reloading
         if (this.isReloading) {
             return null;
         }
 
-        // Check fire rate
+        // 2. Respect fire rate cooldown
+        // This prevents shooting too fast in both Single and Auto modes
         const now = performance.now() / 1000;
         if (now - this.lastShootTime < this.currentWeapon.fireRate) {
             return null;
         }
 
-        // Check ammo (for ranged weapons)
+        // 3. Check ammo (for ranged weapons)
         if (isRangedWeapon(this.currentWeapon)) {
             const ammoState = this.ammoState[this.currentWeaponId];
             if (ammoState.currentAmmo <= 0) {
@@ -579,7 +605,7 @@ export class WeaponManager {
 
         return {
             weapon: weapon,
-            weaponManager: this, 
+            weaponManager: this,
             shots: shots,
             isRanged: isRangedWeapon(weapon),
             isMelee: isMeleeWeapon(weapon),
@@ -684,32 +710,32 @@ export class WeaponManager {
                 this.playerModel.position.copy(controls.sphereBody.position);
                 // Align Upper Chest/Neck with Camera height (Sphere Center)
                 // Was -1.6 (feet at ground), but model is small now. Raising it up.
-                this.playerModel.position.y -= 1.25; 
-                
+                this.playerModel.position.y -= 1.25;
+
                 // Rotation: Match Camera Yaw (Control direction)
                 const yaw = controls.euler.y;
-                this.playerModel.rotation.set(0, yaw + Math.PI, 0); 
+                this.playerModel.rotation.set(0, yaw + Math.PI, 0);
             } else {
                 // 1st Person: Offset behind camera to hide body
                 // Get camera yaw
                 const euler = new THREE.Euler(0, 0, 0, 'YXZ');
                 euler.setFromQuaternion(this.camera.quaternion);
-                
+
                 // Calculate Position: Camera Pos - Scale Offset (Move body behind camera)
                 const yaw = euler.y;
                 const backOffset = 0.25; // Meters behind camera
-                
+
                 const offsetX = Math.sin(yaw) * backOffset;
                 const offsetZ = Math.cos(yaw) * backOffset;
 
                 this.playerModel.position.x = this.camera.position.x + offsetX;
                 this.playerModel.position.z = this.camera.position.z + offsetZ;
-                this.playerModel.position.y = this.camera.position.y - 1.25; 
-                
+                this.playerModel.position.y = this.camera.position.y - 1.25;
+
                 // Sync Rotation
-                this.playerModel.rotation.set(0, yaw + Math.PI, 0); 
+                this.playerModel.rotation.set(0, yaw + Math.PI, 0);
             }
-            
+
             // CRITICAL FIX: deeply update the matrix world of the character model
             // immediately after moving it, otherwise the Bone MatrixWorld used for IK
             // will be stale (from previous frame), causing the arms to explode/stretch
@@ -761,120 +787,120 @@ export class WeaponManager {
             this.leftArmBone.rotation.set(1.3, 0, 0.3); // Raise Left Arm roughly forward
             this.leftArmBone.updateMatrixWorld();
         }
-        
+
         // Optional: Bend elbows slightly?
         if (this.rightForeArmBone) {
-             this.rightForeArmBone.rotation.set(0.5, 0, 0); // Bend Elbow
-             this.rightForeArmBone.updateMatrixWorld();
+            this.rightForeArmBone.rotation.set(0.5, 0, 0); // Bend Elbow
+            this.rightForeArmBone.updateMatrixWorld();
         }
         if (this.leftForeArmBone) {
-             this.leftForeArmBone.rotation.set(0.5, 0, 0); // Bend Elbow
-             this.leftForeArmBone.updateMatrixWorld();
+            this.leftForeArmBone.rotation.set(0.5, 0, 0); // Bend Elbow
+            this.leftForeArmBone.updateMatrixWorld();
         }
 
         // Snap Hand Bone to Weapon (Fake IK)
         if (this.rightHandBone) {
             const mesh = this.weaponMeshes[this.currentWeaponId];
             if (mesh && mesh.visible) {
-                 // We want the HAND to be at the WEAPON HANDLE.
-                 // Weapon is positioned by _updateWeaponPosition (Floating).
-                 // We force the hand bone to match that position.
-                 
-                 // 1. Get Weapon World Transform
-                 const targetPos = new THREE.Vector3();
-                 const targetQuat = new THREE.Quaternion();
-                 mesh.getWorldPosition(targetPos);
-                 mesh.getWorldQuaternion(targetQuat);
+                // We want the HAND to be at the WEAPON HANDLE.
+                // Weapon is positioned by _updateWeaponPosition (Floating).
+                // We force the hand bone to match that position.
 
-                 // 2. Convert to Hand Bone Parent's Local Space
-                 // 2. Apply Right Hand (Handle/Trigger)
-                 // User reported Right Hand was at Tip. We need to move it BACK (+Z).
-                 // Weapon points -Z. Back is +Z.
-                 
-                 // Offset for Right Hand relative to Weapon Origin (which seems to be near tip/center)
-                 // Adjust this until Right Hand hits the pistol grip.
-                 const rhOffset = new THREE.Vector3(0, -0.05, 0.3); // Back 30cm, Down 5cm
-                 
-                 // Apply rotation to offset
-                 const rhOffsetWorld = rhOffset.clone().applyQuaternion(targetQuat);
-                 const rhFinalPos = targetPos.clone().add(rhOffsetWorld);
+                // 1. Get Weapon World Transform
+                const targetPos = new THREE.Vector3();
+                const targetQuat = new THREE.Quaternion();
+                mesh.getWorldPosition(targetPos);
+                mesh.getWorldQuaternion(targetQuat);
 
-                 // Convert to Hand Bone Parent's Local Space
-                 if (this.rightHandBone.parent) {
-                      const parent = this.rightHandBone.parent;
-                      const parentInv = parent.matrixWorld.clone().invert();
-                      
-                      const localPos = rhFinalPos.clone().applyMatrix4(parentInv);
-                      
-                      const parentQuat = new THREE.Quaternion();
-                      parent.getWorldQuaternion(parentQuat);
-                      const parentInvQuat = parentQuat.clone().invert();
-                      
-                      const handQuat = targetQuat.clone().premultiply(parentInvQuat); // Local = ParentInv * World
-                      
-                      // Apply to Bone
-                      this.rightHandBone.position.copy(localPos);
-                      this.rightHandBone.quaternion.copy(handQuat);
-                      
-                      // Rotate Hand to align with Gun
-                      this.rightHandBone.rotateX(-Math.PI/2);
-                 }
+                // 2. Convert to Hand Bone Parent's Local Space
+                // 2. Apply Right Hand (Handle/Trigger)
+                // User reported Right Hand was at Tip. We need to move it BACK (+Z).
+                // Weapon points -Z. Back is +Z.
 
-                  // 3. Snap Left Hand (Foregrip / Barrel)
-                 if (this.leftHandBone && this.leftHandBone.parent) {
-                      // Scale Left Hand down slightly per user request
-                      this.leftHandBone.scale.set(0.8, 0.8, 0.8);
+                // Offset for Right Hand relative to Weapon Origin (which seems to be near tip/center)
+                // Adjust this until Right Hand hits the pistol grip.
+                const rhOffset = new THREE.Vector3(0, -0.05, 0.3); // Back 30cm, Down 5cm
 
-                      // Determine Left Hand Offset based on weapon type
-                      // This offset is relative to the WEAPON ORIGIN (targetPos), NOT the Right Hand.
-                      // Right Hand is at +0.3 (Back).
-                      // Previous Left Hand was -0.15 (Front).
-                      // User wants it "thụt vào trong" (retracted/closer).
-                      // Let's move it back to -0.05 (closer to receiver).
-                      
-                      let lhOffset = new THREE.Vector3(0, -0.05, -0.05); 
+                // Apply rotation to offset
+                const rhOffsetWorld = rhOffset.clone().applyQuaternion(targetQuat);
+                const rhFinalPos = targetPos.clone().add(rhOffsetWorld);
 
-                      if (this.currentWeapon.id === 'SHOTGUN') {
-                          lhOffset.set(0, -0.1, -0.2); // Pump handle
-                      } else if (this.currentWeapon.id === 'SWORD') {
-                           lhOffset = null; 
-                      } else if (this.currentWeapon.id === 'GRENADE') {
-                          lhOffset = null;
-                      }
+                // Convert to Hand Bone Parent's Local Space
+                if (this.rightHandBone.parent) {
+                    const parent = this.rightHandBone.parent;
+                    const parentInv = parent.matrixWorld.clone().invert();
 
-                      if (lhOffset) {
-                          // Get World Position of the "Foregrip"
-                          const foregripPos = targetPos.clone(); // Start at weapon origin
-                          
-                          // Apply weapon rotation to the local offset
-                          const offsetWorld = lhOffset.clone().applyQuaternion(targetQuat);
-                          
-                          foregripPos.add(offsetWorld); // Add to world pos
+                    const localPos = rhFinalPos.clone().applyMatrix4(parentInv);
 
-                          // Convert to Left Hand Bone Parent Space
-                          const parent = this.leftHandBone.parent;
-                          const parentInv = parent.matrixWorld.clone().invert();
-                          
-                          foregripPos.applyMatrix4(parentInv);
+                    const parentQuat = new THREE.Quaternion();
+                    parent.getWorldQuaternion(parentQuat);
+                    const parentInvQuat = parentQuat.clone().invert();
 
-                          // Set Bone Position
-                          this.leftHandBone.position.copy(foregripPos);
+                    const handQuat = targetQuat.clone().premultiply(parentInvQuat); // Local = ParentInv * World
 
-                           // Orientation: Left hand should grip the barrel.
-                           const parentQuat = new THREE.Quaternion();
-                           parent.getWorldQuaternion(parentQuat);
-                           const parentInvQuat = parentQuat.clone().invert();
-                           
-                           const handQuat = targetQuat.clone().premultiply(parentInvQuat);
-                           this.leftHandBone.quaternion.copy(handQuat);
+                    // Apply to Bone
+                    this.rightHandBone.position.copy(localPos);
+                    this.rightHandBone.quaternion.copy(handQuat);
 
-                           this.leftHandBone.rotateX(-Math.PI/2);
-                           // User requested "ngửa ra" (palm up/supinated).
-                           // Currently Y = PI (180). Let's try 0 or -PI/2.
-                           // Actually, let's try rotating Z axis which is usually wrist twist.
-                           this.leftHandBone.rotateY(0); // Resetting Y rotation to see default palm up state 
-                      }
-                 }
+                    // Rotate Hand to align with Gun
+                    this.rightHandBone.rotateX(-Math.PI / 2);
+                }
+
+                // 3. Snap Left Hand (Foregrip / Barrel)
+                if (this.leftHandBone && this.leftHandBone.parent) {
+                    // Scale Left Hand down slightly per user request
+                    this.leftHandBone.scale.set(0.8, 0.8, 0.8);
+
+                    // Determine Left Hand Offset based on weapon type
+                    // This offset is relative to the WEAPON ORIGIN (targetPos), NOT the Right Hand.
+                    // Right Hand is at +0.3 (Back).
+                    // Previous Left Hand was -0.15 (Front).
+                    // User wants it "thụt vào trong" (retracted/closer).
+                    // Let's move it back to -0.05 (closer to receiver).
+
+                    let lhOffset = new THREE.Vector3(0, -0.05, -0.05);
+
+                    if (this.currentWeapon.id === 'SHOTGUN') {
+                        lhOffset.set(0, -0.1, -0.2); // Pump handle
+                    } else if (this.currentWeapon.id === 'SWORD') {
+                        lhOffset = null;
+                    } else if (this.currentWeapon.id === 'GRENADE') {
+                        lhOffset = null;
+                    }
+
+                    if (lhOffset) {
+                        // Get World Position of the "Foregrip"
+                        const foregripPos = targetPos.clone(); // Start at weapon origin
+
+                        // Apply weapon rotation to the local offset
+                        const offsetWorld = lhOffset.clone().applyQuaternion(targetQuat);
+
+                        foregripPos.add(offsetWorld); // Add to world pos
+
+                        // Convert to Left Hand Bone Parent Space
+                        const parent = this.leftHandBone.parent;
+                        const parentInv = parent.matrixWorld.clone().invert();
+
+                        foregripPos.applyMatrix4(parentInv);
+
+                        // Set Bone Position
+                        this.leftHandBone.position.copy(foregripPos);
+
+                        // Orientation: Left hand should grip the barrel.
+                        const parentQuat = new THREE.Quaternion();
+                        parent.getWorldQuaternion(parentQuat);
+                        const parentInvQuat = parentQuat.clone().invert();
+
+                        const handQuat = targetQuat.clone().premultiply(parentInvQuat);
+                        this.leftHandBone.quaternion.copy(handQuat);
+
+                        this.leftHandBone.rotateX(-Math.PI / 2);
+                        // User requested "ngửa ra" (palm up/supinated).
+                        // Currently Y = PI (180). Let's try 0 or -PI/2.
+                        // Actually, let's try rotating Z axis which is usually wrist twist.
+                        this.leftHandBone.rotateY(0); // Resetting Y rotation to see default palm up state 
+                    }
+                }
             }
         }
     }
@@ -914,23 +940,23 @@ export class WeaponManager {
 
         // Determine Reference Frame (Camera vs Virtual Eyes)
         let refPosition, refQuaternion;
-        
-        if (isThirdPerson && controls && controls.sphereBody) {
-             // Virtual Eye Position (where 1st person Cam would be)
-             refPosition = controls.sphereBody.position.clone();
-             refPosition.y += 0.0; // Eye height relative to center (0.0 matches camera default?)
-             // Note: Controls syncs camera.y to sphereBody.y + offset.
-             // We want the same Y as the 1st person camera would allow.
-             // Usually sphere center is 0. Feet -0.5. Eyes +0.x?
-             // Actually controls.currentCameraYOffset handles this.
-             refPosition.y += controls.currentCameraYOffset;
 
-             // Rotation matches control Yaw/Pitch
-             refQuaternion = this.camera.quaternion.clone(); // Camera rotation is still correct for aim direction
+        if (isThirdPerson && controls && controls.sphereBody) {
+            // Virtual Eye Position (where 1st person Cam would be)
+            refPosition = controls.sphereBody.position.clone();
+            refPosition.y += 0.0; // Eye height relative to center (0.0 matches camera default?)
+            // Note: Controls syncs camera.y to sphereBody.y + offset.
+            // We want the same Y as the 1st person camera would allow.
+            // Usually sphere center is 0. Feet -0.5. Eyes +0.x?
+            // Actually controls.currentCameraYOffset handles this.
+            refPosition.y += controls.currentCameraYOffset;
+
+            // Rotation matches control Yaw/Pitch
+            refQuaternion = this.camera.quaternion.clone(); // Camera rotation is still correct for aim direction
         } else {
-             // 1st Person: Use actual camera
-             refPosition = this.camera.position.clone();
-             refQuaternion = this.camera.quaternion.clone();
+            // 1st Person: Use actual camera
+            refPosition = this.camera.position.clone();
+            refQuaternion = this.camera.quaternion.clone();
         }
 
         // 1. Base Aim Lerp (Hip <-> ADS)
@@ -1069,7 +1095,7 @@ export class WeaponManager {
                 // Usually Up mouse = negative Y delta. If I look up, gun should drag down?
                 // dragging down means negative Y. So deltaY (neg) -> neg Y.
                 // scaling:
-                const factor = 0.0005; 
+                const factor = 0.0005;
                 targetSwayPos.x = -swayDelta.x * factor;
                 targetSwayPos.y = swayDelta.y * factor; // mouse down (+Y) -> gun down (-Y)? No usually +Y delta is mouse down.
                 // Standard: Mouse Down -> +Y delta -> Look Down. Gun should drag Up (+Y).
@@ -1104,16 +1130,16 @@ export class WeaponManager {
         // Actually, typical implementation:
         // target = rawInput * scaler
         // current.lerp(target, smooth)
-        
+
         // But input is per frame. Ideally input should be smooth or we smooth the result.
-        
+
         // Let's rely on Lerp. 
         // Note: deltaTime is in seconds.
         const smoothTime = 8.0 * deltaTime;
-        
+
         // Lerp position
         this.swayPosition.lerp(targetSwayPos, smoothTime);
-        
+
         // Lerp rotation (manual for Euler)
         // We can treat Euler as vector for small angles
         this.swayRotation.x = THREE.MathUtils.lerp(this.swayRotation.x, targetSwayRot.x, smoothTime);
@@ -1159,7 +1185,9 @@ export class WeaponManager {
             ...this.getAmmoState(),
             isReloading: this.isReloading,
             reloadProgress: this.reloadProgress,
-            moveSpeedMultiplier: this.currentWeapon.moveSpeedMultiplier
+            moveSpeedMultiplier: this.currentWeapon.moveSpeedMultiplier,
+            fireMode: this.currentWeapon.fireMode,
+            hasMultipleFireModes: this.currentWeapon.fireModes && this.currentWeapon.fireModes.length > 1
         };
     }
 
@@ -1178,7 +1206,7 @@ export class WeaponManager {
             }
         }
     }
-     getMuzzleWorldPosition() {
+    getMuzzleWorldPosition() {
         const mesh = this.weaponMeshes[this.currentWeaponId];
         const local = this.muzzlePoints[this.currentWeaponId];
         if (!mesh || !local) return null;

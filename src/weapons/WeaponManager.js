@@ -82,6 +82,7 @@ export class WeaponManager {
         this._equipWeapon(this.currentWeaponId);
 
         console.log('[WeaponManager] Initialized with', this.currentWeapon.name);
+        this._checkLowAmmo();
     }
 
     /**
@@ -336,6 +337,27 @@ export class WeaponManager {
 
         console.log(`[WeaponManager] Equipped: ${weapon.name}`);
     }
+    _checkLowAmmo() {
+    if (!isRangedWeapon(this.currentWeapon)) {
+        this.isLowAmmo = false;
+        return;
+    }
+
+    const ammo = this.ammoState[this.currentWeaponId].currentAmmo;
+    const threshold = this.currentWeapon.lowAmmoThreshold ?? 0;
+
+    const newState = ammo <= threshold;
+
+    if (newState !== this.isLowAmmo) {
+        this.isLowAmmo = newState;
+
+        // Notify UI
+        if (this.onAmmoChange) {
+            this.onAmmoChange(this.getAmmoState());
+        }
+    }
+}
+
 
     /**
      * Get current ammo state
@@ -378,6 +400,7 @@ export class WeaponManager {
 
             // Consume ammo
             ammoState.currentAmmo--;
+            this._checkLowAmmo();
 
             // Fire ammo change callback
             if (this.onAmmoChange) {
@@ -538,6 +561,7 @@ export class WeaponManager {
         }
 
         console.log(`[WeaponManager] Reload complete! Ammo: ${ammoState.currentAmmo}/${this.currentWeapon.maxAmmo}`);
+        this._checkLowAmmo();
     }
 
     /**

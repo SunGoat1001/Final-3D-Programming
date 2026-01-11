@@ -5,23 +5,43 @@ import { world, defaultMaterial } from './physics.js';
 import { getEnemyMesh, hitEnemy } from './enemy.js';
 import { camera } from './scene.js';
 import { takeDamage, getPlayerPosition } from './player.js';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
+let grenadeModel = null;
+
+const loader = new GLTFLoader();
+loader.load('models/nade.glb', (gltf) => {
+    grenadeModel = gltf.scene;
+});
 const grenades = [];
 
 export function throwGrenade(origin, direction, power = 15) {
     // Mesh
-    const geo = new THREE.SphereGeometry(0.15, 12, 12);
-    const mat = new THREE.MeshStandardMaterial({ color: 0x225522 });
-    const mesh = new THREE.Mesh(geo, mat);
+    // Mesh (model)
+    let mesh;
+
+    if (grenadeModel) {
+        mesh = grenadeModel.clone();
+        mesh.scale.set(0.3, 0.3, 0.3);
+    } else {
+        // Fallback nếu model chưa load xong
+        const geo = new THREE.SphereGeometry(0.15, 12, 12);
+        const mat = new THREE.MeshStandardMaterial({ color: 0x225522 });
+        mesh = new THREE.Mesh(geo, mat);
+    }
+
     mesh.position.copy(origin);
     scene.add(mesh);
+
 
     // Physics body
     const shape = new CANNON.Sphere(0.15);
     const body = new CANNON.Body({
         mass: 1,
         shape,
-        material: defaultMaterial
+        material: defaultMaterial,
+        linearDamping: 0.2,   // cản không khí
+    angularDamping: 0.3 
     });
 
     body.position.set(origin.x, origin.y, origin.z);
@@ -32,6 +52,13 @@ export function throwGrenade(origin, direction, power = 15) {
         direction.y * power + 4,
         direction.z * power
     );
+    // Random spin
+body.angularVelocity.set(
+    (Math.random() - 0.5) * 10,
+    (Math.random() - 0.5) * 10,
+    (Math.random() - 0.5) * 10
+);
+
 
     world.addBody(body);
 
@@ -122,3 +149,4 @@ function explode(grenade, index) {
     world.removeBody(grenade.body);
     grenades.splice(index, 1);
 }
+

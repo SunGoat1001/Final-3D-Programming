@@ -1,10 +1,12 @@
 import * as CANNON from 'cannon-es';
 import { world, defaultMaterial } from './physics.js';
+import { HealthBar } from './ui/HealthBar.js';
 import { PLAYER_RADIUS, PLAYER_MASS, PLAYER_START_POSITION, PLAYER_INITIAL_HEALTH } from './constants.js';
 
 let health = PLAYER_INITIAL_HEALTH;
+const maxHealth = PLAYER_INITIAL_HEALTH;
 
-const healthText = document.getElementById('health-text');
+const healthBarUI = new HealthBar();
 const deathScreen = document.getElementById('death-screen');
 const deathButton = deathScreen ? deathScreen.querySelector('p') : null;
 
@@ -48,12 +50,16 @@ export function getHealth() {
     return health;
 }
 
+export function getPlayerPosition() {
+    return playerBody ? playerBody.position : { x: 0, y: 0, z: 0 };
+}
+
 export function takeDamage(amount) {
     if (isDead) return;
 
     health = Math.max(0, health - amount);
     updateHealthUI();
-    
+
     if (health <= 0) {
         die();
     }
@@ -62,7 +68,7 @@ export function takeDamage(amount) {
 function die() {
     isDead = true;
     console.log("Player Died");
-    
+
     // Unlock pointer
     if (document.pointerLockElement) {
         document.exitPointerLock();
@@ -101,14 +107,9 @@ export function respawn() {
 }
 
 export function updateHealthUI() {
-    if (healthText) {
-        healthText.innerText = Math.ceil(health);
-        
-        // Optional: Change color on low health
-        if (health <= 30) {
-            healthText.style.color = '#ff3333';
-        } else {
-            healthText.style.color = '#fff';
-        }
-    }
+    healthBarUI.update(health, maxHealth);
 }
+
+// Initial UI update
+updateHealthUI();
+

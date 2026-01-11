@@ -119,18 +119,56 @@ canvas {
   position: fixed;
   bottom: 30px;
   left: 30px;
-  /* Removed background and borders for minimal look */
-  padding: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
   z-index: 100;
 }
 
+#health-bar-container {
+  width: 350px;
+  height: 25px;
+  display: flex;
+  gap: 5px;
+  overflow: visible;
+  /* Changed to visible to show skewed parts */
+  padding-left: 10px;
+  /* Offset for skew */
+}
+
+.health-segment {
+  flex: 1;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transform: skewX(-20deg);
+  transition: background 0.1s ease;
+}
+
+.health-segment.active.green {
+  background: #2ecc71;
+  box-shadow: 0 0 8px rgba(46, 204, 113, 0.4);
+}
+
+.health-segment.active.yellow {
+  background: #f1c40f;
+  box-shadow: 0 0 8px rgba(241, 196, 15, 0.4);
+}
+
+.health-segment.active.red {
+  background: #e74c3c;
+  box-shadow: 0 0 8px rgba(231, 76, 60, 0.4);
+}
+
 #health-text {
-  font-size: 80px;
-  /* Much larger */
+  font-size: 60px;
+  /* Slightly smaller to fit with bar */
   font-weight: bold;
   color: #fff;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+  line-height: 1;
 }
 
 /* Death Screen */

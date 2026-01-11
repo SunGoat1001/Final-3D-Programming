@@ -57,7 +57,7 @@ export const WEAPONS = {
         reloadTime: 2.5,         // 2-3 seconds
         
         // Movement
-        moveSpeedMultiplier: 0.6,  // Slight slowdown when equipped
+        moveSpeedMultiplier: 0.2,  // Slight slowdown when equipped
         
         // Ballistics
         range: 100,              // 100 meters effective range
@@ -99,7 +99,7 @@ export const WEAPONS = {
         reloadTime: 3.0,         // Longer reload due to single shell loading
         
         // Movement
-        moveSpeedMultiplier: 0.3,   // More slowdown (heavier weapon)
+        moveSpeedMultiplier: 0.1,   // More slowdown (heavier weapon)
         
         // Ballistics
         range: 20,               // 20 meters effective range
@@ -141,7 +141,7 @@ export const WEAPONS = {
         reloadTime: 0,           // No reload for melee
         
         // Movement
-        moveSpeedMultiplier: 1.1,   // Faster movement with light weapon
+        moveSpeedMultiplier: 0.4,   // Faster movement with light weapon
         
         // Range
         range: 3,                // 3 meters melee range
@@ -180,7 +180,7 @@ GRENADE: {
 
     reloadTime: 1.0,
 
-    moveSpeedMultiplier: 0.7,
+    moveSpeedMultiplier: 0.3,
 
     range: 15,
     pellets: 1,

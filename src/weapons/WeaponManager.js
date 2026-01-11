@@ -112,7 +112,7 @@ export class WeaponManager {
             },
             SHOTGUN: {
                 path: 'models/shotgun.glb',
-                position: { x: 0.05, y: -0.2, z: 0.2 },
+                position: { x: 0.05, y: -0.25, z: 0.2 },
                 rotation: { x: 0, y: Math.PI, z: 0 },
                 scale: { x: 0.07, y: 0.07, z: 0.07 },
                 muzzle: { x: 0.1, y: 0.03, z: -1.4 }   

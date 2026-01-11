@@ -117,7 +117,6 @@ function animate() {
     requestAnimationFrame(animate);
 
     const deltaTime = clock.getDelta();
-updateMuzzleFlashes(deltaTime);
 
     // Get move speed multiplier from current weapon
     const weaponInfo = weaponManager.getHighlightInfo ? weaponManager.getHighlightInfo() : weaponManager.getWeaponInfo();

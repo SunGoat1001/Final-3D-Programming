@@ -80,6 +80,10 @@ weaponManager.onReloadEnd = () => {
     weaponUI.updateWeaponInfo(weaponManager.getWeaponInfo());
 };
 
+weaponManager.onCharacterLoaded = (name) => {
+    weaponUI.showCharacterLoaded(name);
+};
+
 // Initial UI update
 weaponUI.updateWeaponInfo(weaponManager.getWeaponInfo());
 

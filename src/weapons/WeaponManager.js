@@ -83,6 +83,7 @@ export class WeaponManager {
         this.onReloadEnd = null;
         this.onWeaponSwitch = null;
         this.onAmmoChange = null;
+        this.onCharacterLoaded = null;
 
         // Input bindings
         this._bindInputs();
@@ -92,6 +93,16 @@ export class WeaponManager {
 
         console.log('[WeaponManager] Initialized with', this.currentWeapon.name);
         this._checkLowAmmo();
+
+        // Player Model
+        this.playerModel = null;
+        this.rightHandBone = null;
+        this.leftHandBone = null;
+        this.rightArmBone = null;
+        this.rightForeArmBone = null;
+        this.leftArmBone = null;
+        this.leftForeArmBone = null;
+        this._loadPlayerModel();
     }
 
     /**
@@ -198,6 +209,91 @@ export class WeaponManager {
                 );
             }
         }
+    }
+
+    /**
+     * Load the player character model
+     */
+    _loadPlayerModel() {
+        const loader = new GLTFLoader();
+        loader.load('models/messi_character.glb', (gltf) => {
+            this.playerModel = gltf.scene;
+            
+            // Adjust scale/position
+            // FPS Camera is usually at eye level (1.6m). The model needs to be lowered so eyes match camera.
+            // Model origin is usually at feet.
+            // SCALE: User reported 0.02 was still too big. 
+            // Reducing to 0.015 to better fit the weapon handle.
+            this.playerModel.scale.set(0.020, 0.020, 0.020);
+
+            // FPS Camera at 1.6m eye level
+            this.playerModel.position.set(0, -1.6, 0); 
+            // Rotate to face forward (Camera looks -Z, Model usually faces +Z)
+            this.playerModel.rotation.y = Math.PI;
+
+            // Enable shadows
+            this.playerModel.traverse((child) => {
+                if (child.isMesh) {
+                    child.castShadow = true;
+                }
+                // Find Right Arm chain
+                if (child.isBone) {
+                    const name = child.name.toLowerCase();
+                    
+                    // Right Arm
+                    if (!this.rightArmBone && (name.includes('rightarm') || name.includes('arm_r') || name.includes('mixamorig:rightarm'))) {
+                         this.rightArmBone = child;
+                    }
+                    if (!this.rightForeArmBone && (name.includes('rightforearm') || name.includes('forearm_r') || name.includes('mixamorig:rightforearm'))) {
+                         this.rightForeArmBone = child;
+                    }
+
+                    // Left Arm
+                    if (!this.leftArmBone && (name.includes('leftarm') || name.includes('arm_l') || name.includes('mixamorig:leftarm'))) {
+                         this.leftArmBone = child;
+                    }
+                    if (!this.leftForeArmBone && (name.includes('leftforearm') || name.includes('forearm_l') || name.includes('mixamorig:leftforearm'))) {
+                         this.leftForeArmBone = child;
+                    }
+                }
+                
+                // Find Right Hand Bone
+                if (child.isBone && !this.rightHandBone) {
+                   const name = child.name.toLowerCase();
+                   if (name.includes('righthand') || name.includes('hand_r') || name.includes('mixamorig:righthand')) {
+                       this.rightHandBone = child;
+                       console.log(`[WeaponManager] Found Right Hand Bone: ${child.name}`);
+                   }
+                }
+                
+                // Find Left Hand Bone
+                if (child.isBone && !this.leftHandBone) {
+                   const name = child.name.toLowerCase();
+                   if (name.includes('lefthand') || name.includes('hand_l') || name.includes('mixamorig:lefthand')) {
+                       this.leftHandBone = child;
+                       console.log(`[WeaponManager] Found Left Hand Bone: ${child.name}`);
+                   }
+                }
+            });
+
+            if (!this.rightHandBone) console.warn('[WeaponManager] Could not find Right Hand bone!');
+            if (!this.leftHandBone) console.warn('[WeaponManager] Could not find Left Hand bone!');
+            if (!this.rightArmBone) console.warn('[WeaponManager] Could not find Right Arm bone!');
+            if (!this.leftArmBone) console.warn('[WeaponManager] Could not find Left Arm bone!');
+
+            // Add model to SCENE so it casts proper shadows and stays upright
+            scene.add(this.playerModel);
+            
+            console.log('[WeaponManager] Player model loaded');
+
+            // Notify UI
+            if (this.onCharacterLoaded) {
+                 this.onCharacterLoaded('Messi Character');
+            }
+
+        }, undefined, (err) => {
+            console.error('[WeaponManager] Error loading player model:', err);
+        });
     }
 
     /**
@@ -578,8 +674,55 @@ export class WeaponManager {
      * @param {number} deltaTime - Time since last update in seconds
      */
     update(deltaTime) {
-        // Update weapon mesh position to follow camera
-        this._updateWeaponPosition(deltaTime);
+        const controls = getControls();
+        const isThirdPerson = controls ? controls.isThirdPerson : false;
+
+        // Update Player Model Transform
+        if (this.playerModel) {
+            if (isThirdPerson && controls && controls.sphereBody) {
+                // 3rd Person: Match Physics Body exactly
+                this.playerModel.position.copy(controls.sphereBody.position);
+                // Align Upper Chest/Neck with Camera height (Sphere Center)
+                // Was -1.6 (feet at ground), but model is small now. Raising it up.
+                this.playerModel.position.y -= 1.25; 
+                
+                // Rotation: Match Camera Yaw (Control direction)
+                const yaw = controls.euler.y;
+                this.playerModel.rotation.set(0, yaw + Math.PI, 0); 
+            } else {
+                // 1st Person: Offset behind camera to hide body
+                // Get camera yaw
+                const euler = new THREE.Euler(0, 0, 0, 'YXZ');
+                euler.setFromQuaternion(this.camera.quaternion);
+                
+                // Calculate Position: Camera Pos - Scale Offset (Move body behind camera)
+                const yaw = euler.y;
+                const backOffset = 0.25; // Meters behind camera
+                
+                const offsetX = Math.sin(yaw) * backOffset;
+                const offsetZ = Math.cos(yaw) * backOffset;
+
+                this.playerModel.position.x = this.camera.position.x + offsetX;
+                this.playerModel.position.z = this.camera.position.z + offsetZ;
+                this.playerModel.position.y = this.camera.position.y - 1.25; 
+                
+                // Sync Rotation
+                this.playerModel.rotation.set(0, yaw + Math.PI, 0); 
+            }
+            
+            // CRITICAL FIX: deeply update the matrix world of the character model
+            // immediately after moving it, otherwise the Bone MatrixWorld used for IK
+            // will be stale (from previous frame), causing the arms to explode/stretch
+            // when calculating World->Local transforms.
+            this.playerModel.updateMatrixWorld(true);
+        }
+
+        // Update weapon mesh position
+        // Pass isThirdPerson flag to helper if needed, or handle it here?
+        // Actually _updateWeaponPosition uses this.camera
+        // We need to override it if 3rd person.
+        this._updateWeaponPosition(deltaTime, isThirdPerson);
+
 
         // Update reload progress
         if (this.isReloading) {
@@ -600,6 +743,138 @@ export class WeaponManager {
             if (this.equipProgress >= 1) {
                 this.equipProgress = 1;
                 this.isEquipping = false;
+            }
+        }
+
+        // 1. Force Arms to "Raised" Position (Fake Shoulder IK)
+        // Rotate Upper Arms forward so hands can reach the gun without stretching 2 meters
+        if (this.rightArmBone) {
+            // Reset rotation to identity first or just set specific angle? 
+            // Better to lerp or just set static for now.
+            // X-axis: 0 is down, -1.5 is forward/up. 
+            // Z-axis: T-pose is 0. 
+            // Lowering arm slightly (1.5 -> 1.3) per user request
+            this.rightArmBone.rotation.set(1.3, 0, -0.3); // Raise Right Arm roughly forward
+            this.rightArmBone.updateMatrixWorld();
+        }
+        if (this.leftArmBone) {
+            this.leftArmBone.rotation.set(1.3, 0, 0.3); // Raise Left Arm roughly forward
+            this.leftArmBone.updateMatrixWorld();
+        }
+        
+        // Optional: Bend elbows slightly?
+        if (this.rightForeArmBone) {
+             this.rightForeArmBone.rotation.set(0.5, 0, 0); // Bend Elbow
+             this.rightForeArmBone.updateMatrixWorld();
+        }
+        if (this.leftForeArmBone) {
+             this.leftForeArmBone.rotation.set(0.5, 0, 0); // Bend Elbow
+             this.leftForeArmBone.updateMatrixWorld();
+        }
+
+        // Snap Hand Bone to Weapon (Fake IK)
+        if (this.rightHandBone) {
+            const mesh = this.weaponMeshes[this.currentWeaponId];
+            if (mesh && mesh.visible) {
+                 // We want the HAND to be at the WEAPON HANDLE.
+                 // Weapon is positioned by _updateWeaponPosition (Floating).
+                 // We force the hand bone to match that position.
+                 
+                 // 1. Get Weapon World Transform
+                 const targetPos = new THREE.Vector3();
+                 const targetQuat = new THREE.Quaternion();
+                 mesh.getWorldPosition(targetPos);
+                 mesh.getWorldQuaternion(targetQuat);
+
+                 // 2. Convert to Hand Bone Parent's Local Space
+                 // 2. Apply Right Hand (Handle/Trigger)
+                 // User reported Right Hand was at Tip. We need to move it BACK (+Z).
+                 // Weapon points -Z. Back is +Z.
+                 
+                 // Offset for Right Hand relative to Weapon Origin (which seems to be near tip/center)
+                 // Adjust this until Right Hand hits the pistol grip.
+                 const rhOffset = new THREE.Vector3(0, -0.05, 0.3); // Back 30cm, Down 5cm
+                 
+                 // Apply rotation to offset
+                 const rhOffsetWorld = rhOffset.clone().applyQuaternion(targetQuat);
+                 const rhFinalPos = targetPos.clone().add(rhOffsetWorld);
+
+                 // Convert to Hand Bone Parent's Local Space
+                 if (this.rightHandBone.parent) {
+                      const parent = this.rightHandBone.parent;
+                      const parentInv = parent.matrixWorld.clone().invert();
+                      
+                      const localPos = rhFinalPos.clone().applyMatrix4(parentInv);
+                      
+                      const parentQuat = new THREE.Quaternion();
+                      parent.getWorldQuaternion(parentQuat);
+                      const parentInvQuat = parentQuat.clone().invert();
+                      
+                      const handQuat = targetQuat.clone().premultiply(parentInvQuat); // Local = ParentInv * World
+                      
+                      // Apply to Bone
+                      this.rightHandBone.position.copy(localPos);
+                      this.rightHandBone.quaternion.copy(handQuat);
+                      
+                      // Rotate Hand to align with Gun
+                      this.rightHandBone.rotateX(-Math.PI/2);
+                 }
+
+                  // 3. Snap Left Hand (Foregrip / Barrel)
+                 if (this.leftHandBone && this.leftHandBone.parent) {
+                      // Scale Left Hand down slightly per user request
+                      this.leftHandBone.scale.set(0.8, 0.8, 0.8);
+
+                      // Determine Left Hand Offset based on weapon type
+                      // This offset is relative to the WEAPON ORIGIN (targetPos), NOT the Right Hand.
+                      // Right Hand is at +0.3 (Back).
+                      // Previous Left Hand was -0.15 (Front).
+                      // User wants it "thụt vào trong" (retracted/closer).
+                      // Let's move it back to -0.05 (closer to receiver).
+                      
+                      let lhOffset = new THREE.Vector3(0, -0.05, -0.05); 
+
+                      if (this.currentWeapon.id === 'SHOTGUN') {
+                          lhOffset.set(0, -0.1, -0.2); // Pump handle
+                      } else if (this.currentWeapon.id === 'SWORD') {
+                           lhOffset = null; 
+                      } else if (this.currentWeapon.id === 'GRENADE') {
+                          lhOffset = null;
+                      }
+
+                      if (lhOffset) {
+                          // Get World Position of the "Foregrip"
+                          const foregripPos = targetPos.clone(); // Start at weapon origin
+                          
+                          // Apply weapon rotation to the local offset
+                          const offsetWorld = lhOffset.clone().applyQuaternion(targetQuat);
+                          
+                          foregripPos.add(offsetWorld); // Add to world pos
+
+                          // Convert to Left Hand Bone Parent Space
+                          const parent = this.leftHandBone.parent;
+                          const parentInv = parent.matrixWorld.clone().invert();
+                          
+                          foregripPos.applyMatrix4(parentInv);
+
+                          // Set Bone Position
+                          this.leftHandBone.position.copy(foregripPos);
+
+                           // Orientation: Left hand should grip the barrel.
+                           const parentQuat = new THREE.Quaternion();
+                           parent.getWorldQuaternion(parentQuat);
+                           const parentInvQuat = parentQuat.clone().invert();
+                           
+                           const handQuat = targetQuat.clone().premultiply(parentInvQuat);
+                           this.leftHandBone.quaternion.copy(handQuat);
+
+                           this.leftHandBone.rotateX(-Math.PI/2);
+                           // User requested "ngửa ra" (palm up/supinated).
+                           // Currently Y = PI (180). Let's try 0 or -PI/2.
+                           // Actually, let's try rotating Z axis which is usually wrist twist.
+                           this.leftHandBone.rotateY(0); // Resetting Y rotation to see default palm up state 
+                      }
+                 }
             }
         }
     }
@@ -625,8 +900,9 @@ export class WeaponManager {
     /**
      * Update weapon mesh position to follow camera (viewmodel)
      * @param {number} deltaTime
+     * @param {boolean} isThirdPerson
      */
-    _updateWeaponPosition(deltaTime) {
+    _updateWeaponPosition(deltaTime, isThirdPerson = false) {
         const controls = getControls();
         const mesh = this.weaponMeshes[this.currentWeaponId];
         if (!mesh) return;
@@ -635,6 +911,27 @@ export class WeaponManager {
         const defaultHip = { x: 0.25, y: -0.15, z: -0.5 };
         const baseOffset = this.currentWeapon.positionOffset || defaultHip;
         const adsOffset = this.currentWeapon.adsOffset || { ...defaultHip, x: 0 }; // fallback if missing
+
+        // Determine Reference Frame (Camera vs Virtual Eyes)
+        let refPosition, refQuaternion;
+        
+        if (isThirdPerson && controls && controls.sphereBody) {
+             // Virtual Eye Position (where 1st person Cam would be)
+             refPosition = controls.sphereBody.position.clone();
+             refPosition.y += 0.0; // Eye height relative to center (0.0 matches camera default?)
+             // Note: Controls syncs camera.y to sphereBody.y + offset.
+             // We want the same Y as the 1st person camera would allow.
+             // Usually sphere center is 0. Feet -0.5. Eyes +0.x?
+             // Actually controls.currentCameraYOffset handles this.
+             refPosition.y += controls.currentCameraYOffset;
+
+             // Rotation matches control Yaw/Pitch
+             refQuaternion = this.camera.quaternion.clone(); // Camera rotation is still correct for aim direction
+        } else {
+             // 1st Person: Use actual camera
+             refPosition = this.camera.position.clone();
+             refQuaternion = this.camera.quaternion.clone();
+        }
 
         // 1. Base Aim Lerp (Hip <-> ADS)
         const currentLocalOffset = new THREE.Vector3().lerpVectors(
@@ -826,10 +1123,8 @@ export class WeaponManager {
         // COMBINE TRANSFORMATIONS
 
         // Apply camera quaternion to align with view
-        mesh.quaternion.copy(this.camera.quaternion);
+        mesh.quaternion.copy(refQuaternion);
 
-        // Apply local rotations (Equip + Reload + Recoil + Melee)
-        // Note: Order matters. We rotate the mesh "locally" relative to camera
         // Apply local rotations (Equip + Reload + Recoil + Melee + Sway)
         // Note: Order matters. We rotate the mesh "locally" relative to camera
         mesh.rotateX(reloadRotation.x + equipRotation.x + recoilRotation.x + meleeRotation.x + this.swayRotation.x);
@@ -847,10 +1142,10 @@ export class WeaponManager {
 
         // Transform local position to world space relative to camera
         const worldOffset = finalLocalPosition.clone();
-        worldOffset.applyQuaternion(this.camera.quaternion);
+        worldOffset.applyQuaternion(refQuaternion);
 
         // Set final position
-        mesh.position.copy(this.camera.position).add(worldOffset);
+        mesh.position.copy(refPosition).add(worldOffset);
     }
 
     /**

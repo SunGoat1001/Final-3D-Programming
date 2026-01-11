@@ -241,6 +241,52 @@ export class WeaponUI {
     }
 
     /**
+     * Show a temporary notification that character model is loaded
+     * @param {string} name
+     */
+    showCharacterLoaded(name) {
+        const notif = document.createElement('div');
+        notif.style.cssText = `
+            position: fixed;
+            top: 20%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 50, 200, 0.8);
+            color: white;
+            padding: 15px 30px;
+            border-radius: 8px;
+            font-size: 20px;
+            font-weight: bold;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            z-index: 2000;
+            animation: fadeInOut 4s forwards;
+            pointer-events: none;
+            text-align: center;
+        `;
+        notif.innerHTML = `CHARACTER LOADED:<br><span style="color: #4db8ff; font-size: 24px;">${name}</span>`;
+        document.body.appendChild(notif);
+
+        // Add keyframe animation style if not exists
+        if (!document.getElementById('anim-fadeinout')) {
+            const style = document.createElement('style');
+            style.id = 'anim-fadeinout';
+            style.innerHTML = `
+                @keyframes fadeInOut {
+                    0% { opacity: 0; transform: translate(-50%, 20px); }
+                    10% { opacity: 1; transform: translate(-50%, 0); }
+                    80% { opacity: 1; transform: translate(-50%, 0); }
+                    100% { opacity: 0; transform: translate(-50%, -20px); }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+
+        setTimeout(() => {
+            if (notif.parentNode) notif.parentNode.removeChild(notif);
+        }, 4000);
+    }
+
+    /**
      * Destroy UI
      */
     destroy() {

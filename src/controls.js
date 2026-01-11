@@ -44,11 +44,12 @@ export class PointerLockControlsCannon {
         this.moveSpeedMultiplier = 1.0;
         this.isSprinting = false;
         this.isCrouching = false;
+        this.isThirdPerson = false;
         this.currentCameraYOffset = STANDING_HEIGHT;
 
         // Euler for camera rotation
         this.euler = new THREE.Euler(0, 0, 0, 'YXZ');
-
+        
         // Velocity for input-based movement
         this.inputVelocity = new THREE.Vector3();
 
@@ -160,6 +161,9 @@ export class PointerLockControlsCannon {
                 break;
             case 'KeyC':
                 this.isCrouching = !this.isCrouching;
+                break;
+            case 'KeyK':
+                this.isThirdPerson = !this.isThirdPerson;
                 break;
         }
     }
@@ -311,8 +315,41 @@ export class PointerLockControlsCannon {
         }
 
         // Sync camera position to sphere body
-        this.camera.position.copy(this.sphereBody.position);
-        this.camera.position.y += this.currentCameraYOffset;
+        if (this.isThirdPerson) {
+            // 3rd Person Camera Logic
+            const yaw = this.euler.y;
+            const pitch = this.euler.x;
+            
+            // Offset: Back 3m, Up 1.5m, Right 0.5m (over shoulder)
+            const dist = 3.0;
+            
+            // Calculate offset vector based on yaw/pitch
+            // Simple orbit:
+            const offsetX = Math.sin(yaw) * dist;
+            const offsetZ = Math.cos(yaw) * dist;
+            const offsetY = Math.sin(pitch) * dist * 0.5; // Slight pitch influence
+
+            this.camera.position.x = this.sphereBody.position.x + offsetX;
+            this.camera.position.z = this.sphereBody.position.z + offsetZ;
+            this.camera.position.y = this.sphereBody.position.y + 2.0 - offsetY; // Look down from above?
+
+            // Actually, standard 3rd person: Camera is BEHIND.
+            // If Yaw 0 = Looking -Z.
+            // Behind = +Z.
+            // So if Yaw=0, we want +Z offset.
+            // Math.sin(0) = 0. Math.cos(0) = 1. -> +Z. Correct.
+            
+            this.camera.lookAt(
+                this.sphereBody.position.x,
+                this.sphereBody.position.y + 1.0, // Look at head/chest
+                this.sphereBody.position.z
+            );
+        } else {
+            // 1st Person Logic
+            this.camera.position.copy(this.sphereBody.position);
+            this.camera.position.y += this.currentCameraYOffset;
+        }
+
         // Movement amount for crosshair
         const horizontalSpeed = Math.sqrt(
             this.sphereBody.velocity.x * this.sphereBody.velocity.x +

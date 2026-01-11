@@ -4,6 +4,7 @@ import { scene } from './scene.js';
 import { world, defaultMaterial } from './physics.js';
 import { getEnemyMesh, hitEnemy } from './enemy.js';
 import { camera } from './scene.js';
+import { takeDamage, getPlayerPosition } from './player.js';
 
 const grenades = [];
 
@@ -105,6 +106,15 @@ function explode(grenade, index) {
             hitEnemy(dmg);
             console.log(`[Grenade] Hit enemy for ${dmg.toFixed(1)}`);
         }
+    }
+
+    // Damage player (Self damage)
+    const playerPos = getPlayerPosition();
+    const dPlayer = new THREE.Vector3(playerPos.x, playerPos.y, playerPos.z).distanceTo(new THREE.Vector3(pos.x, pos.y, pos.z));
+    if (dPlayer < radius) {
+        const dmg = maxDamage * (1 - dPlayer / radius);
+        takeDamage(dmg);
+        console.log(`[Grenade] Self-hit for ${dmg.toFixed(1)}`);
     }
 
     // Cleanup grenade

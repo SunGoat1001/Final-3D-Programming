@@ -43,7 +43,7 @@ export class WeaponManager {
         // Weapon meshes (placeholders)
         this.weaponMeshes = {};
         this._createWeaponMeshes();
-
+        this.muzzlePoints = {}; // store local muzzle points per weapon
         // Shooting state
         this.canShoot = true;
         this.lastShootTime = 0;
@@ -106,13 +106,15 @@ export class WeaponManager {
                 path: 'models/hk_g36.glb',
                 position: { x: 0, y: -0.05, z: 0.1 },
                 rotation: { x: 0, y: Math.PI, z: 0 },
-                scale: { x: 0.08, y: 0.08, z: 0.08 }
+                scale: { x: 0.08, y: 0.08, z: 0.08 },
+                muzzle: { x: 0.05, y: 0.0005, z: -0.9 } 
             },
             SHOTGUN: {
                 path: 'models/shotgun.glb',
                 position: { x: 0.05, y: -0.2, z: 0.2 },
                 rotation: { x: 0, y: Math.PI, z: 0 },
-                scale: { x: 0.07, y: 0.07, z: 0.07 }
+                scale: { x: 0.07, y: 0.07, z: 0.07 },
+                muzzle: { x: 0.1, y: 0.03, z: -1.4 }   
             },
             SWORD: {
                 path: 'models/sword.glb',
@@ -167,6 +169,15 @@ export class WeaponManager {
 
                         // Add as child to the weapon group
                         group.add(model);
+                        // Save muzzle local position for this weapon
+                        if (config.muzzle) {
+                            this.muzzlePoints[id] = new THREE.Vector3(
+                                config.muzzle.x,
+                                config.muzzle.y,
+                                config.muzzle.z
+                            );
+                        }
+
 
                         console.log(`[WeaponManager] Loaded 3D model for ${weapon.name}`);
                     },
@@ -440,6 +451,7 @@ export class WeaponManager {
 
         return {
             weapon: weapon,
+            weaponManager: this, 
             shots: shots,
             isRanged: isRangedWeapon(weapon),
             isMelee: isMeleeWeapon(weapon),
@@ -768,6 +780,16 @@ export class WeaponManager {
             }
         }
     }
+     getMuzzleWorldPosition() {
+        const mesh = this.weaponMeshes[this.currentWeaponId];
+        const local = this.muzzlePoints[this.currentWeaponId];
+        if (!mesh || !local) return null;
+
+        const worldPos = local.clone();
+        worldPos.applyMatrix4(mesh.matrixWorld);
+        return worldPos;
+    }
+
 }
 
 export default WeaponManager;

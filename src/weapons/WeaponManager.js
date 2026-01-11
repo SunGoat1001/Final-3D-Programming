@@ -65,7 +65,16 @@ export class WeaponManager {
         this.shootAnimStartTime = 0;
         this.meleeAnimStartTime = 0;
         this.shootAnimDuration = 0.15; // fast recoil
+        this.shootAnimDuration = 0.15; // fast recoil
         this.meleeAnimDuration = 0.4; // sword swing duration
+
+        // Sway State
+        this.swayPosition = new THREE.Vector3(0, 0, 0);
+        this.swayRotation = new THREE.Euler(0, 0, 0);
+        this.SWAY_AMOUNT = 0.02;
+        this.SWAY_SMOOTHING = 10.0;
+        this.SWAY_ROTATION_AMOUNT = 0.1;
+
 
 
         // Callbacks
@@ -570,7 +579,7 @@ export class WeaponManager {
      */
     update(deltaTime) {
         // Update weapon mesh position to follow camera
-        this._updateWeaponPosition();
+        this._updateWeaponPosition(deltaTime);
 
         // Update reload progress
         if (this.isReloading) {
@@ -615,8 +624,10 @@ export class WeaponManager {
 
     /**
      * Update weapon mesh position to follow camera (viewmodel)
+     * @param {number} deltaTime
      */
-    _updateWeaponPosition() {
+    _updateWeaponPosition(deltaTime) {
+        const controls = getControls();
         const mesh = this.weaponMeshes[this.currentWeaponId];
         if (!mesh) return;
 
@@ -747,6 +758,71 @@ export class WeaponManager {
             }
         }
 
+        // 6. Weapon Sway
+        // Calculate target sway based on mouse movement
+        let targetSwayPos = new THREE.Vector3(0, 0, 0);
+        let targetSwayRot = new THREE.Euler(0, 0, 0);
+
+        if (controls) {
+            const swayDelta = controls.getSwayDelta();
+            if (swayDelta) { // Check if method exists
+                // Position sway (Gun drags behind movement)
+                // Mouse Right (positive X) -> Gun moves Left (negative X)
+                // Mouse Up (negative Y) -> Gun moves Down (negative Y)? 
+                // Usually Up mouse = negative Y delta. If I look up, gun should drag down?
+                // dragging down means negative Y. So deltaY (neg) -> neg Y.
+                // scaling:
+                const factor = 0.0005; 
+                targetSwayPos.x = -swayDelta.x * factor;
+                targetSwayPos.y = swayDelta.y * factor; // mouse down (+Y) -> gun down (-Y)? No usually +Y delta is mouse down.
+                // Standard: Mouse Down -> +Y delta -> Look Down. Gun should drag Up (+Y).
+                // So if deltaY > 0, targetY > 0.
+
+                // Rotation sway
+                const rotFactor = 0.002;
+                targetSwayRot.y = -swayDelta.x * rotFactor; // Look Right -> Twist Left
+                targetSwayRot.x = -swayDelta.y * rotFactor; // Look Down -> Twist Up
+            }
+        }
+
+        // Scale sway by aim progress (less sway when aiming)
+        const aimFactor = 1.0 - this.aimProgress * 0.8; // 20% sway at full aim
+        targetSwayPos.multiplyScalar(aimFactor);
+        targetSwayRot.x *= aimFactor;
+        targetSwayRot.y *= aimFactor;
+
+        // Clamp targets
+        const maxSway = 0.1;
+        targetSwayPos.x = Math.max(Math.min(targetSwayPos.x, maxSway), -maxSway);
+        targetSwayPos.y = Math.max(Math.min(targetSwayPos.y, maxSway), -maxSway);
+
+        // Smoothly interpolate current sway to target (which is 0 if no input, but here input is impulsive)
+        // Wait, getSwayDelta returns the frame's delta. If I stop moving, delta is 0.
+        // So target becomes 0.
+        // We want 'currentSway' to move towards 'targetSway' (which is the input offset).
+        // Then if target becomes 0, currentSway moves back to 0.
+
+        // Correct logic:
+        // We don't just "set" target. We want the sway to "lag" behind.
+        // Actually, typical implementation:
+        // target = rawInput * scaler
+        // current.lerp(target, smooth)
+        
+        // But input is per frame. Ideally input should be smooth or we smooth the result.
+        
+        // Let's rely on Lerp. 
+        // Note: deltaTime is in seconds.
+        const smoothTime = 8.0 * deltaTime;
+        
+        // Lerp position
+        this.swayPosition.lerp(targetSwayPos, smoothTime);
+        
+        // Lerp rotation (manual for Euler)
+        // We can treat Euler as vector for small angles
+        this.swayRotation.x = THREE.MathUtils.lerp(this.swayRotation.x, targetSwayRot.x, smoothTime);
+        this.swayRotation.y = THREE.MathUtils.lerp(this.swayRotation.y, targetSwayRot.y, smoothTime);
+
+
         // COMBINE TRANSFORMATIONS
 
         // Apply camera quaternion to align with view
@@ -754,17 +830,20 @@ export class WeaponManager {
 
         // Apply local rotations (Equip + Reload + Recoil + Melee)
         // Note: Order matters. We rotate the mesh "locally" relative to camera
-        mesh.rotateX(reloadRotation.x + equipRotation.x + recoilRotation.x + meleeRotation.x);
-        mesh.rotateY(reloadRotation.y + meleeRotation.y);
+        // Apply local rotations (Equip + Reload + Recoil + Melee + Sway)
+        // Note: Order matters. We rotate the mesh "locally" relative to camera
+        mesh.rotateX(reloadRotation.x + equipRotation.x + recoilRotation.x + meleeRotation.x + this.swayRotation.x);
+        mesh.rotateY(reloadRotation.y + meleeRotation.y + this.swayRotation.y);
         mesh.rotateZ(reloadRotation.z + meleeRotation.z);
 
-        // Combine offsets (Aim + Reload + Equip + Recoil + Melee)
+        // Combine offsets (Aim + Reload + Equip + Recoil + Melee + Sway)
         // These are strictly local to the camera view
         const finalLocalPosition = currentLocalOffset.clone()
             .add(reloadOffset)
             .add(equipOffset)
             .add(recoilOffset)
-            .add(meleeOffset);
+            .add(meleeOffset)
+            .add(this.swayPosition);
 
         // Transform local position to world space relative to camera
         const worldOffset = finalLocalPosition.clone();

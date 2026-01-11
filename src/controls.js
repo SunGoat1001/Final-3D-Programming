@@ -22,6 +22,9 @@ export class PointerLockControlsCannon {
         this.camera = camera;
         this.sphereBody = sphereBody;
 
+        // Sway state (accumulates mouse movement)
+        this.swayDelta = { x: 0, y: 0 };
+
         // Movement state
         this.moveForward = false;
         this.moveBackward = false;
@@ -114,6 +117,10 @@ export class PointerLockControlsCannon {
 
         const movementX = event.movementX || 0;
         const movementY = event.movementY || 0;
+
+        // Accumulate for weapon sway
+        this.swayDelta.x += movementX;
+        this.swayDelta.y += movementY;
 
         // Use reduced sensitivity when aiming
         const sensitivity = this.isAiming ? 0.001 : MOUSE_SENSITIVITY;
@@ -316,6 +323,17 @@ export class PointerLockControlsCannon {
         const move01 = Math.min(horizontalSpeed / 6, 1);
         setMoveAmount(move01);
 
+    }
+
+    /**
+     * Get accumulated mouse movement for weapon sway and reset it
+     * @returns {Object} { x, y }
+     */
+    getSwayDelta() {
+        const delta = { ...this.swayDelta };
+        this.swayDelta.x = 0;
+        this.swayDelta.y = 0;
+        return delta;
     }
 }
 let _controlsInstance = null;

@@ -164,6 +164,46 @@ export const WEAPONS = {
         adsOffset: { x: 0, y: -0.15, z: -0.6 } // Center but melee doesn't really ADS
     },
     // ===========================
+    // BAZOOKA
+    // ===========================
+    BAZOOKA: {
+        id: 'bazooka',
+        name: 'Bazooka',
+        type: WeaponType.RANGED,
+
+        damage: 100,
+        damageMax: 150,
+
+        // Fire Mode
+        fireModes: ['SINGLE'],
+        fireMode: 'SINGLE',
+
+        fireRate: 2.0,
+
+        maxAmmo: 1,
+        reserveAmmo: 10,
+        lowAmmoThreshold: 1,
+
+        reloadTime: 3.5,
+
+        moveSpeedMultiplier: 0.1, // heavy
+
+        range: 60,
+        pellets: 1,
+        spread: 0.01,
+
+        bulletSpeed: 50,
+
+        color: 0x333333,
+        size: { length: 1.2, height: 0.2, width: 0.2 },
+
+        description: 'Heavy explosive weapon. High damage but slow reload.',
+
+        positionOffset: { x: 0.2, y: -0.2, z: -0.5 },
+        adsOffset: { x: 0, y: -0.2, z: -0.5 }
+    },
+
+    // ===========================
     // GRENADE
     // ===========================
     GRENADE: {
@@ -211,9 +251,9 @@ export const WEAPONS = {
 export const WEAPON_SLOTS = {
     1: 'RIFLE',      // Key 1 = Rifle
     2: 'SHOTGUN',    // Key 2 = Shotgun  
-    3: 'SWORD',    // Key 3 = Sword
-    4: 'GRENADE'
-
+    3: 'BAZOOKA',    // Key 3 = Bazooka
+    4: 'SWORD',      // Key 4 = Sword
+    5: 'GRENADE'     // Key 5 = Grenade
 };
 
 /**

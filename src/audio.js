@@ -1,3 +1,5 @@
+import { camera } from './scene.js';
+
 function playSound(src, volume = 1) {
     const s = new Audio(src);
     s.volume = volume;
@@ -43,4 +45,26 @@ export function playGrenadeThrow() {
 
 export function playEmptyClick() {
     playSound('sounds/emptyGunShoot.mp3', 0.5);
+}
+
+// Bazooka
+export function playBazookaShot() {
+    playSound('sounds/bazuka.mp3', 0.8);
+}
+
+export function playBazookaExplosion(position) {
+    const sound = new Audio('sounds/boom_bazuka.mp3');
+
+    // Simple distance based volume
+    const dist = position ? position.distanceTo(camera.position) : 0;
+    const maxDist = 50;
+    let volume = 1 - (dist / maxDist);
+    volume = Math.max(0, Math.min(1, volume));
+
+    sound.volume = volume * 0.8;
+    sound.play();
+}
+
+export function playBazookaReload() {
+    playSound('sounds/bazukaReloading.mp3', 0.8);
 }

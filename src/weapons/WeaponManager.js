@@ -21,7 +21,9 @@ import {
     playSwordSwing,
     playSwitchWeapon,
     playGrenadeThrow,
-    playEmptyClick
+    playEmptyClick,
+    playBazookaShot,
+    playBazookaReload
 } from '../audio.js';
 
 /**
@@ -148,8 +150,17 @@ export class WeaponManager {
                 position: { x: 0, y: -0.05, z: -0.05 },
                 rotation: { x: 0, y: 0, z: 0 },
                 scale: { x: 0.60, y: 0.60, z: 0.60 }
+            },
+            BAZOOKA: {
+                path: 'models/golden_bazooka.glb', // Verified in directory as golden_bazooka.glb
+                position: { x: 0, y: 0.02, z: 0.1 }, // Offset: right, down, forward
+                rotation: { x: 0, y: Math.PI, z: 0 }, // Rotate backwards (facing camera)
+                scale: { x: 0.99, y: 0.99, z: 0.99 },
+                muzzle: { x: 0.1, y: 0.05, z: -1.2 }
             }
         };
+
+        console.log('[WeaponManager] Starting weapon model loading...');
 
         const loader = new GLTFLoader();
 
@@ -199,12 +210,28 @@ export class WeaponManager {
                             );
                         }
 
+                        console.log(`[WeaponManager] SUCCESS: Loaded 3D model for ${weapon.name} from ${config.path}`);
 
-                        console.log(`[WeaponManager] Loaded 3D model for ${weapon.name}`);
+                        // Explicitly set visibility and disable frustum culling to ensure it shows up
+                        model.visible = true;
+                        model.traverse(node => {
+                            if (node.isMesh) {
+                                node.visible = true;
+                                node.frustumCulled = false;
+                                node.castShadow = true;
+                                node.receiveShadow = false;
+                                console.log(`[WeaponManager] Mesh found: ${node.name}, visible: ${node.visible}`);
+                            }
+                        });
+
+                        if (id === 'BAZOOKA') {
+                            console.log(`[WeaponManager] Bazooka model attached to group. Group global visibility: ${group.visible}`);
+                            // Even if group is not currently equipped, it will show up when equipped.
+                        }
                     },
                     undefined,
                     (error) => {
-                        console.error(`[WeaponManager] Error loading model for ${weapon.name}:`, error);
+                        console.error(`[WeaponManager] FAILED: Error loading model for ${weapon.name}:`, error);
                     }
                 );
             }
@@ -533,6 +560,16 @@ export class WeaponManager {
             ammoState.currentAmmo--;
             this._checkLowAmmo();
 
+            // Auto-reload if empty (useful for single-shot weapons like Bazooka)
+            if (ammoState.currentAmmo === 0 && ammoState.reserveAmmo > 0) {
+                // Short delay to allow firing animation to play a bit
+                setTimeout(() => {
+                    if (this.currentWeaponId === weaponId && !this.isReloading) {
+                        this.reload();
+                    }
+                }, 200);
+            }
+
             // Fire ammo change callback
             if (this.onAmmoChange) {
                 this.onAmmoChange(this.getAmmoState());
@@ -552,6 +589,7 @@ export class WeaponManager {
             if (this.currentWeapon.id === 'shotgun') playShotgunShot();
             if (this.currentWeapon.id === 'sword') playSwordSwing();
             if (this.currentWeapon.id === 'grenade') playGrenadeThrow();
+            if (this.currentWeapon.id === 'bazooka') playBazookaShot();
         }
 
         // Trigger animations
@@ -645,6 +683,7 @@ export class WeaponManager {
         // Play reload sound
         if (this.currentWeapon.id === 'rifle') playRifleReload();
         if (this.currentWeapon.id === 'shotgun') playShotgunReload();
+        if (this.currentWeapon.id === 'bazooka') playBazookaReload();
 
         this.reloadStartTime = performance.now();
         this.reloadProgress = 0;

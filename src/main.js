@@ -18,6 +18,7 @@ import { WeaponManager } from './weapons/WeaponManager.js';
 import { WeaponUI } from './weapons/WeaponUI.js';
 import { spawnAmmoPickup, updateAmmoPickups } from './ammoPickup.js';
 import { updateGrenades } from './grenade.js';
+import { updateRockets } from './rocket.js';
 import { startScreenShake, updateScreenShake } from './screenShake.js';
 import { initHitmarker } from './hitmarker.js';
 import { updateCrosshair } from './crosshair.js';
@@ -144,6 +145,8 @@ function animate() {
 
     //Update Grenades
     updateGrenades(deltaTime);
+    //Update Rockets
+    updateRockets(deltaTime);
     //Screen shake
     updateScreenShake(camera, deltaTime);
 
@@ -179,6 +182,6 @@ console.log('WASD - Move');
 console.log('Space - Jump');
 console.log('Left Click - Shoot');
 console.log('Right Click - Aim');
-console.log('1/2/3 - Switch Weapon');
+console.log('1/2/3/4/5 - Switch Weapon');
 console.log('R - Reload');
 console.log('====================');

@@ -33,7 +33,7 @@ import { updateMuzzleFlashes } from './muzzleFlash.js';
 // ===========================
 initObstacles();
 
-initHitmarker();  
+initHitmarker();
 // ===========================
 // PLAYER BODY
 // ===========================
@@ -87,14 +87,22 @@ weaponManager.onCharacterLoaded = (name) => {
 // Initial UI update
 weaponUI.updateWeaponInfo(weaponManager.getWeaponInfo());
 
-// Set shoot callback - now uses WeaponManager
+// Set shoot callback - now handled in animate for Auto, and here for Single
 controls.onShoot = () => {
+    // Only handle initial shot here. 
+    // For AUTO mode, continuous shots are handled in the animate loop.
+    handleShooting();
+};
+
+/**
+ * Handle shooting logic based on input and fire mode
+ */
+function handleShooting() {
     const shot = weaponManager.tryShoot();
     if (shot) {
-        // Screen shake when shooting 
         startScreenShake(0.08, 0.1);
     }
-};
+}
 
 // ===========================
 // SCENE SETUP
@@ -124,10 +132,15 @@ function animate() {
 
     // Update controls (applies forces to sphere body)
     controls.update(deltaTime);
-  // Update crosshair dynamic
+    // Update crosshair dynamic
     updateCrosshair(deltaTime);
     // Update weapon manager (handles reload, weapon position)
     weaponManager.update(deltaTime);
+
+    // Handle automatic firing
+    if (controls.isMouseDown && weaponManager.currentWeapon.fireMode === 'AUTO') {
+        handleShooting();
+    }
 
     //Update Grenades
     updateGrenades(deltaTime);
@@ -148,8 +161,8 @@ function animate() {
 
     // Update enemy visual sync
     updateEnemy();
-// Update ammo pickups
-updateAmmoPickups(sphereBody, weaponManager);
+    // Update ammo pickups
+    updateAmmoPickups(sphereBody, weaponManager);
 
     // Render scene
     renderer.render(scene, camera);

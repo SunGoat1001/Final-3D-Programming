@@ -47,6 +47,23 @@ export class WeaponUI {
         `;
         this.container.appendChild(this.weaponNameElement);
 
+        // Fire Mode
+        this.fireModeElement = document.createElement('div');
+        this.fireModeElement.id = 'fire-mode-display';
+        this.fireModeElement.style.cssText = `
+            font-size: 12px;
+            font-weight: 600;
+            color: #ffaa00;
+            background: rgba(255, 170, 0, 0.1);
+            padding: 2px 8px;
+            border-radius: 4px;
+            border: 1px solid rgba(255, 170, 0, 0.3);
+            text-transform: uppercase;
+            margin-bottom: -5px;
+            display: none;
+        `;
+        this.container.appendChild(this.fireModeElement);
+
         // Ammo display
         this.ammoElement = document.createElement('div');
         this.ammoElement.id = 'ammo-display';
@@ -114,7 +131,7 @@ export class WeaponUI {
             color: #666;
             margin-top: 5px;
         `;
-        this.controlsHint.innerHTML = '[1][2][3][4] Switch | [R] Reload';
+        this.controlsHint.innerHTML = '[1][2][3][4] Switch | [R] Reload | [V] Fire Mode';
         this.container.appendChild(this.controlsHint);
 
         document.body.appendChild(this.container);
@@ -181,7 +198,7 @@ export class WeaponUI {
                 <span style="color: #66ff66;">∞</span>
             `;
         } else {
-          this.ammoElement.innerHTML = `
+            this.ammoElement.innerHTML = `
                 <span id="current-ammo">${info.currentAmmo}</span>
                 <span style="font-size: 20px; color: #666;">/</span>
                 <span style="font-size: 20px; color: #888;">${info.reserveAmmo}</span>
@@ -201,6 +218,14 @@ export class WeaponUI {
                 currentSpan.style.animation = 'none';
             }
 
+        }
+
+        // Update fire mode
+        if (info.hasMultipleFireModes) {
+            this.fireModeElement.textContent = info.fireMode;
+            this.fireModeElement.style.display = 'block';
+        } else {
+            this.fireModeElement.style.display = 'none';
         }
 
         // Update slot indicators

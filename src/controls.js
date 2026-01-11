@@ -4,6 +4,7 @@ import {
     MOUSE_SENSITIVITY,
     JUMP_VELOCITY,
     MOVE_FORCE_MULTIPLIER,
+    MOVE_SPEED,
     SPRINT_MULTIPLIER,
     CROUCH_MULTIPLIER,
     STANDING_HEIGHT,
@@ -18,7 +19,7 @@ import { setMoveAmount } from './crosshair.js';
  */
 export class PointerLockControlsCannon {
     constructor(camera, sphereBody) {
-         _controlsInstance = this; 
+        _controlsInstance = this;
         this.camera = camera;
         this.sphereBody = sphereBody;
 
@@ -31,6 +32,7 @@ export class PointerLockControlsCannon {
         this.moveLeft = false;
         this.moveRight = false;
         this.canJump = false;
+        this.isMouseDown = false;
 
         // Shooting callback
         this.onShoot = null;
@@ -49,7 +51,7 @@ export class PointerLockControlsCannon {
 
         // Euler for camera rotation
         this.euler = new THREE.Euler(0, 0, 0, 'YXZ');
-        
+
         // Velocity for input-based movement
         this.inputVelocity = new THREE.Vector3();
 
@@ -191,9 +193,11 @@ export class PointerLockControlsCannon {
     onMouseDown(event) {
         if (!this.isLocked()) return;
 
-        if (event.button === 0 && this.onShoot) {
-            // Left click to shoot
-            this.onShoot();
+        if (event.button === 0) {
+            this.isMouseDown = true;
+            if (this.onShoot) {
+                this.onShoot();
+            }
         } else if (event.button === 2) {
             // Right click to aim/zoom
             this.isAiming = true;
@@ -202,6 +206,10 @@ export class PointerLockControlsCannon {
     }
 
     onMouseUp(event) {
+        if (event.button === 0) {
+            this.isMouseDown = false;
+        }
+
         if (event.button === 2) {
             // Right click released
             this.isAiming = false;
@@ -273,8 +281,8 @@ export class PointerLockControlsCannon {
             const worldVelocity = new THREE.Vector3();
             worldVelocity.addScaledVector(forward, this.inputVelocity.z);
             worldVelocity.addScaledVector(right, this.inputVelocity.x);
-            
-                        // Calculate state multiplier (sprint/crouch)
+
+            // Calculate state multiplier (sprint/crouch)
             let stateMultiplier = 1.0;
             if (this.isCrouching) {
                 stateMultiplier = CROUCH_MULTIPLIER;
@@ -292,7 +300,6 @@ export class PointerLockControlsCannon {
             );
             this.sphereBody.applyForce(force);
         }
-
         // Interpolate FOV for smooth zoom
         const fovDiff = this.targetFOV - this.currentFOV;
         if (Math.abs(fovDiff) > 0.1) {
@@ -305,7 +312,7 @@ export class PointerLockControlsCannon {
             this.camera.updateProjectionMatrix();
         }
 
-              // Interpolate camera height for crouching
+        // Interpolate camera height for crouching
         const targetYOffset = this.isCrouching ? CROUCHING_HEIGHT : STANDING_HEIGHT;
         const yDiff = targetYOffset - this.currentCameraYOffset;
         if (Math.abs(yDiff) > 0.01) {
@@ -319,10 +326,10 @@ export class PointerLockControlsCannon {
             // 3rd Person Camera Logic
             const yaw = this.euler.y;
             const pitch = this.euler.x;
-            
+
             // Offset: Back 3m, Up 1.5m, Right 0.5m (over shoulder)
             const dist = 3.0;
-            
+
             // Calculate offset vector based on yaw/pitch
             // Simple orbit:
             const offsetX = Math.sin(yaw) * dist;
@@ -338,7 +345,7 @@ export class PointerLockControlsCannon {
             // Behind = +Z.
             // So if Yaw=0, we want +Z offset.
             // Math.sin(0) = 0. Math.cos(0) = 1. -> +Z. Correct.
-            
+
             this.camera.lookAt(
                 this.sphereBody.position.x,
                 this.sphereBody.position.y + 1.0, // Look at head/chest

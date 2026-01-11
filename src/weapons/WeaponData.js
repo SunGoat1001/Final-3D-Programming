@@ -41,6 +41,7 @@ export const WEAPONS = {
         name: 'Assault Rifle',
         type: WeaponType.RANGED,
         
+        
         // Damage
         damage: 25,
         damageMax: 30,
@@ -51,7 +52,7 @@ export const WEAPONS = {
         // Ammo
         maxAmmo: 30,             // 30 rounds per magazine
         reserveAmmo: 90,         // 3 extra magazines
-        
+        lowAmmoThreshold: 5, 
         // Reload
         reloadTime: 2.5,         // 2-3 seconds
         
@@ -82,7 +83,7 @@ export const WEAPONS = {
         id: 'shotgun',
         name: 'Combat Shotgun',
         type: WeaponType.RANGED,
-        
+      
         // Damage (per pellet)
         damage: 15,
         damageMax: 20,
@@ -93,7 +94,7 @@ export const WEAPONS = {
         // Ammo
         maxAmmo: 6,              // 6 shells per magazine
         reserveAmmo: 24,         // 4 extra loads
-        
+        lowAmmoThreshold: 2,
         // Reload
         reloadTime: 3.0,         // Longer reload due to single shell loading
         
@@ -165,6 +166,8 @@ GRENADE: {
     id: 'grenade',
     name: 'Grenade',
     type: WeaponType.RANGED,
+    
+
 
     damage: 120,
     damageMax: 160,
@@ -173,6 +176,7 @@ GRENADE: {
 
     maxAmmo: 1,
     reserveAmmo: 5,
+    lowAmmoThreshold: 0, 
 
     reloadTime: 1.0,
 

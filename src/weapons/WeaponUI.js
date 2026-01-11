@@ -181,13 +181,26 @@ export class WeaponUI {
                 <span style="color: #66ff66;">∞</span>
             `;
         } else {
-            const ammoColor = info.currentAmmo <= 5 ? '#ff4444' :
-                info.currentAmmo <= 10 ? '#ffaa00' : '#ffffff';
-            this.ammoElement.innerHTML = `
-                <span style="color: ${ammoColor};">${info.currentAmmo}</span>
+          this.ammoElement.innerHTML = `
+                <span id="current-ammo">${info.currentAmmo}</span>
                 <span style="font-size: 20px; color: #666;">/</span>
                 <span style="font-size: 20px; color: #888;">${info.reserveAmmo}</span>
             `;
+
+            const currentSpan = this.ammoElement.querySelector('#current-ammo');
+
+            // LOW AMMO WARNING
+            if (info.maxAmmo !== Infinity && info.currentAmmo <= 5) {
+                currentSpan.style.color = '#ff3333';
+                currentSpan.style.animation = 'lowAmmoBlink 0.8s infinite';
+            } else if (info.currentAmmo <= 10) {
+                currentSpan.style.color = '#ffaa00';
+                currentSpan.style.animation = 'none';
+            } else {
+                currentSpan.style.color = '#ffffff';
+                currentSpan.style.animation = 'none';
+            }
+
         }
 
         // Update slot indicators

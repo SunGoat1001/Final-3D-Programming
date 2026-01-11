@@ -7,18 +7,19 @@ export const FOV = 75;
 export const CAMERA_NEAR = 0.1;
 export const CAMERA_FAR = 1000;
 
-// Player - Sphere body configuration
-export const PLAYER_RADIUS = 0.5;  // Sphere radius
-export const PLAYER_MASS = 20;       // Mass in kg
+// Player - Capsule body configuration
+export const PLAYER_RADIUS = 0.4;   // Capsule radius
+export const PLAYER_HEIGHT = 1;   // Capsule height
+export const PLAYER_MASS = 40;      // Mass in kg
 export const PLAYER_START_POSITION = { x: 0, y: 5, z: 0 };
 export const START_POSITION = { x: 0, y: 5, z: 0 };
-export const MOVE_FORCE_MULTIPLIER = 50;  // Force multiplier for movement
+export const MOVE_FORCE_MULTIPLIER = 40;  // Force multiplier for movement
 export const PLAYER_INITIAL_HEALTH = 100; // Player starting health
 
 // Controls
 export const MOUSE_SENSITIVITY = 0.002;
 export const AIM_SENSITIVITY = 0.001;
-export const JUMP_VELOCITY = 20;
+export const JUMP_VELOCITY = 12;
 export const NORMAL_FOV = 75;
 export const AIM_FOV = 45;
 

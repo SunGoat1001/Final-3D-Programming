@@ -92,11 +92,12 @@ loader.load('models/map.glb', (gltf) => {
             // child.material.envMapIntensity = 0.3; 
         }
     });
-    map.scale.set(1.5, 1.5, 1.5)
+    map.scale.set(1, 1, 1)
     scene.add(map);
 }, undefined, (error) => {
     console.error('Error loading map:', error);
 });
+
 
 // ===========================
 // INITIALIZATION

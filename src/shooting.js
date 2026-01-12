@@ -19,18 +19,21 @@ const bullets = [];
  * @param {Object} shotData - Shot data containing weapon and shot info
  */
 export function processShot(shotData) {
-  // === MUZZLE FLASH (REAL WEAPON POSITION) ===
-  if (shotData.isRanged && shotData.shots.length > 0 && shotData.weaponManager) {
-    const muzzlePos = shotData.weaponManager.getMuzzleWorldPosition();
-    if (muzzlePos) {
-      const dir = shotData.shots[0].direction.clone();
-      spawnMuzzleFlash(
-        muzzlePos,
-        dir,
-        shotData.weapon.id === 'shotgun' ? 2.0 : 1.0
-      );
-    }
+// === MUZZLE FLASH (REAL WEAPON POSITION) ===
+if (shotData.isRanged && shotData.shots.length > 0 && shotData.weaponManager) {
+  const muzzlePos = shotData.weaponManager.getMuzzleWorldPosition();
+  if (muzzlePos) {
+    const dir = shotData.shots[0].direction.clone();
+
+    // Scale riêng cho từng súng
+    let flashScale = 1; // default
+    if (shotData.weapon.id === 'shotgun') flashScale = 2;
+    if (shotData.weapon.id === 'bazooka') flashScale = 4; 
+
+    spawnMuzzleFlash(muzzlePos, dir, flashScale);
   }
+}
+
 
   if (!shotData) return;
   addShootKick();

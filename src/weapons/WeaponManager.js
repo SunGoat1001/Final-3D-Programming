@@ -156,7 +156,7 @@ export class WeaponManager {
                 position: { x: 0, y: 0.02, z: 0.1 }, // Offset: right, down, forward
                 rotation: { x: 0, y: Math.PI, z: 0 }, // Rotate backwards (facing camera)
                 scale: { x: 0.99, y: 0.99, z: 0.99 },
-                muzzle: { x: 0.1, y: 0.05, z: -1.2 }
+                muzzle: { x: 0.1, y: 0.05, z: -2.0 }
             }
         };
 

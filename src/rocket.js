@@ -7,6 +7,7 @@ import { camera } from './scene.js';
 import { takeDamage, getPlayerPosition } from './player.js';
 import { playBazookaExplosion } from './audio.js';
 import { getObstaclesMeshes } from './obstacles.js';
+import { spawnSmoke, updateSmoke } from './smokeTrail.js';
 
 const rockets = [];
 
@@ -75,7 +76,8 @@ export function updateRockets(deltaTime) {
 
         // Sync visual to physics
         r.mesh.position.copy(r.body.position);
-
+              // Spawn smoke
+        spawnSmoke(r.mesh.position);
         // Continuous collision detection using raycast from prev pos to current
         if (!r.exploded) {
             const currPos = r.body.position;
@@ -121,6 +123,8 @@ export function updateRockets(deltaTime) {
             explodeRocket(r, i);
         }
     }
+     // Update smoke particles
+    updateSmoke(deltaTime);
 }
 
 function explodeRocket(rocket, index) {

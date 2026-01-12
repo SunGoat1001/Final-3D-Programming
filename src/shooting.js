@@ -53,6 +53,7 @@ if (shotData.isRanged && shotData.shots.length > 0 && shotData.weaponManager) {
     // Process ranged weapon shots (bullets/pellets)
     shotData.shots.forEach((shot) => {
       createBullet(shot);
+      weaponId: shotData.weapon.id
     });
   } else if (shotData.isMelee) {
     // Process melee attack
@@ -103,6 +104,7 @@ function createBullet(shot) {
     prev: bulletBody.position.clone(),
     damage: shot.damage,
     range: shot.range,
+    weaponId: shot.weaponId 
   });
 }
 
@@ -126,7 +128,7 @@ function processMeleeAttack(shotData) {
   if (enemyMesh) {
     const enemyHits = raycaster.intersectObject(enemyMesh, false);
     if (enemyHits.length > 0) {
-      hitEnemy(shot.damage);
+      hitEnemy(shot.damage, shotData.weapon.id);
       showHitmarker();
       createMeleeHitEffect(enemyHits[0].point);
       console.log(`[Melee] Hit enemy for ${shot.damage.toFixed(1)} damage!`);
@@ -305,7 +307,8 @@ export function updateBullets(deltaTime) {
         if (enemyHits.length > 0) {
           const hit = enemyHits[0];
 
-          hitEnemy(bullet.damage || 10);
+          hitEnemy(bullet.damage || 10, bullet.weaponId || 'rifle');
+
           showHitmarker();
 
           spawnImpactEffect(

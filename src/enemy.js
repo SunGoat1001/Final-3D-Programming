@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import { scene } from './scene.js';
 import { world, defaultMaterial } from './physics.js';
+import { killFeed } from './ui/killFeedInstance.js';
 
 let enemyMesh = null;
 let enemyBody = null;
@@ -35,13 +36,20 @@ export function updateEnemy() {
     }
 }
 
-export function hitEnemy(damage) {
+export function hitEnemy(damage, weaponId = 'rifle') {
+    if (enemyHealth <= 0) return false;
+
     enemyHealth -= damage;
     console.log('Enemy hit! Health:', enemyHealth);
 
+    let killed = false;
+
     if (enemyHealth <= 0) {
-        console.log('Enemy defeated!');
         enemyHealth = 0;
+        console.log('Enemy defeated!');
+
+        killFeed.addKill('Player', 'Enemy', weaponId);
+        killed = true;
     }
 
     // Flash on hit
@@ -54,6 +62,8 @@ export function hitEnemy(damage) {
             }
         }, 50);
     }
+
+    return killed;
 }
 
 // ===========================

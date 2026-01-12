@@ -130,7 +130,7 @@ function explode(grenade, index) {
         const d = enemy.position.distanceTo(new THREE.Vector3(pos.x, pos.y, pos.z));
         if (d < radius) {
             const dmg = maxDamage * (1 - d / radius);
-            hitEnemy(dmg);
+            hitEnemy(dmg, 'grenade');
             console.log(`[Grenade] Hit enemy for ${dmg.toFixed(1)}`);
         }
     }

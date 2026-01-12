@@ -23,6 +23,7 @@ import { startScreenShake, updateScreenShake } from './screenShake.js';
 import { initHitmarker } from './hitmarker.js';
 import { updateCrosshair } from './crosshair.js';
 import { updateMuzzleFlashes } from './muzzleFlash.js';
+import './ui/killFeedInstance.js';
 
 // ===========================
 // PHYSICS SETUP

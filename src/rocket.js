@@ -180,7 +180,8 @@ function explodeRocket(rocket, index) {
         const d = enemy.position.distanceTo(thrPos);
         if (d < radius) {
             const dmg = maxDamage * (1 - d / radius);
-            hitEnemy(dmg);
+            hitEnemy(dmg, 'bazooka');
+
             console.log(`[Rocket] Hit enemy for ${dmg.toFixed(1)}`);
         }
     }

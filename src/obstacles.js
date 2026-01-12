@@ -8,13 +8,27 @@ const obstacles = [];
 
 export function initObstacles() {
     // Create wall
-    createObstacle(-0.03, -7.84, 0, 5.6, 3, 0.35);
+    createObstacle(-4.4, -0.1, 0, 17, 3, 0.35, 0, THREE.MathUtils.degToRad(90), 0);
+    createObstacle(4.4, -0.1, 0, 17, 3, 0.35, 0, THREE.MathUtils.degToRad(90), 0);
+    createObstacle(-0.03, 8.2, 0, 8, 3, 0.35);
+    createObstacle(-0.03, -8.2, 0, 8, 3, 0.35);
+    createObstacle(-0.03, -7.84, 0, 5.4, 3, 0.35);
+    createObstacle(3.6, -7.82889, 0, 0.6, 3, 0.35);
+    createObstacle(-3.88628, -7.32, 0, 0.35, 3, 1.1);
+    // Create cầu thang
+    createObstacle(-3.55903, -4.87136, 0, 0.88, 0.5, 0.4);
+    createObstacle(-3.74903, -6.0, 0, 0.32, 0.8, 0.2);
+    createObstacle(-3.74903, -5.8, 0, 0.32, 0.7, 0.2);
+    createObstacle(-3.74903, -5.6, 0, 0.32, 0.6, 0.2);
+    createObstacle(-3.74903, -5.4, 0, 0.32, 0.5, 0.2);
+    createObstacle(-3.74903, -5.62136, 0.753078, 1, 0.05, 0.3, 0, THREE.MathUtils.degToRad(270), THREE.MathUtils.degToRad(-25.9));
+    createObstacle(-3.26903, -5.62136, 0.233078, 1, 0.05, 0.3, 0, THREE.MathUtils.degToRad(270), THREE.MathUtils.degToRad(27.1));
 
+    // Create ceiling
+    createObstacle(-0.03, -7.12433, 1, 8, 0.05, 2, 0, 0, THREE.MathUtils.degToRad(180));
     // Create some box obstacles
-    createObstacle(0.51475, 3.64764, 0, 0.45, 0.25, 0.35);
-    createObstacle(1.49515, 7.7, 0.543078, 2.8, 0.08, 0.6, 0, 0, THREE.MathUtils.degToRad(22.1));
-    createObstacle(2.03169, 1, -20, 4, 2, 4);
-    // createObstacle(15, 1.5, -5, 3, 3, 3, 0x696969);
+    createObstacle(0.51475, 3.64764, 0, 0.35, 0.25, 0.35);
+    createObstacle(1.49515, 7.7, 0.543078, 2.8, 0.08, 0.85, 0, 0, THREE.MathUtils.degToRad(22.1));
     // createObstacle(-15, 0.5, -8, 1, 1, 1, 0x8b4513);
 }
 

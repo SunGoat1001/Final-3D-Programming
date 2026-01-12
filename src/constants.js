@@ -6,7 +6,7 @@
 // Set to >1 to enlarge the entire map & physics world,
 // or <1 to shrink. All world-unit inputs remain unscaled
 // and are multiplied internally.
-export const WORLD_SCALE = 1;
+export const WORLD_SCALE = 2;
 
 // Camera
 export const FOV = 75;
@@ -14,7 +14,7 @@ export const CAMERA_NEAR = 0.1;
 export const CAMERA_FAR = 1000;
 
 // Player - Capsule body configuration
-export const PLAYER_RADIUS = 0.4;   // Capsule radius
+export const PLAYER_RADIUS = 0.8;   // Capsule radius
 export const PLAYER_HEIGHT = 1;   // Capsule height
 export const PLAYER_MASS = 40;      // Mass in kg
 export const PLAYER_START_POSITION = { x: 0, y: 5, z: 0 };

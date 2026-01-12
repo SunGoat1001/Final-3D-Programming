@@ -68,3 +68,46 @@ export function playBazookaExplosion(position) {
 export function playBazookaReload() {
     playSound('sounds/bazukaReloading.mp3', 0.8);
 }
+/// ================= FOOTSTEP SOUNDS =================
+
+let footstepWalkSound = new Audio('sounds/footstep_walk.mp3');
+let footstepSprintSound = new Audio('sounds/footstep_sprint.mp3');
+
+footstepWalkSound.loop = true;
+footstepSprintSound.loop = true;
+
+footstepWalkSound.volume = 0.4;
+footstepSprintSound.volume = 0.5;
+
+let currentFootstep = null;
+
+function stopAllFootsteps() {
+    footstepWalkSound.pause();
+    footstepSprintSound.pause();
+    footstepWalkSound.currentTime = 0;
+    footstepSprintSound.currentTime = 0;
+    currentFootstep = null;
+}
+
+export function playFootstepWalk() {
+    if (currentFootstep === 'walk') return;
+
+    stopAllFootsteps();
+
+    footstepWalkSound.play();
+    currentFootstep = 'walk';
+}
+
+export function playFootstepSprint() {
+    if (currentFootstep === 'sprint') return;
+
+    stopAllFootsteps();
+
+    footstepSprintSound.play();
+    currentFootstep = 'sprint';
+}
+
+export function stopFootsteps() {
+    stopAllFootsteps();
+}
+

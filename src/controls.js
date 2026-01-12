@@ -11,6 +11,10 @@ import {
     CROUCH_SPEED
 } from './constants.js';
 import { setMoveAmount } from './crosshair.js';
+import { playFootstepWalk, playFootstepSprint, stopFootsteps } from './audio.js';
+
+const WALK_STEP_INTERVAL = 0.45;
+const SPRINT_STEP_INTERVAL = 0.28;
 
 /**
  * PointerLockControlsCannon
@@ -53,7 +57,9 @@ export class PointerLockControlsCannon {
 
         // Velocity for input-based movement
         this.inputVelocity = new THREE.Vector3();
-
+        
+        // Footstep sound timer
+        this.footstepTimer = 0;
         // Contact normal to detect if on ground
         this.contactNormal = new CANNON.Vec3();
         this.upAxis = new CANNON.Vec3(0, 1, 0);
@@ -365,6 +371,21 @@ export class PointerLockControlsCannon {
         // Normalize ~ 0 → 1
         const move01 = Math.min(horizontalSpeed / 6, 1);
         setMoveAmount(move01);
+                    // ================= FOOTSTEP SYSTEM =================
+
+        // Check moving on ground
+        const isMoving = horizontalSpeed > 0.2 && this.canJump && !this.isCrouching;
+
+        if (!isMoving) {
+            stopFootsteps();
+        } else {
+            if (this.isSprinting) {
+                playFootstepSprint();
+            } else {
+                playFootstepWalk();
+            }
+        }
+
 
     }
 

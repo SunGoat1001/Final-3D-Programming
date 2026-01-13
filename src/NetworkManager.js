@@ -21,120 +21,148 @@ class NetworkManager {
             characterName: 'messi',
             modelLoaded: false
         };
-        
+
         this.updateInterval = null;
         this.UPDATE_RATE = 1000 / 30; // 30 updates per second
-        
+
         this.onPlayerKilled = null;
         this.onTookDamage = null;
+        this.scoreboardData = [];
+        this.teamScores = { red: 0, blue: 0 };
+        this.matchEnded = false;
     }
-    
+
     connect(serverUrl = 'http://localhost:3001') {
         console.log('Connecting to server...');
-        
+
         this.socket = io(serverUrl, {
             transports: ['websocket', 'polling']
         });
-        
+
         this.setupEventListeners();
     }
-    
+
     setupEventListeners() {
         this.socket.on('connect', () => {
             console.log('✅ Connected to server');
             this.connected = true;
         });
-        
+
         this.socket.on('init', (data) => {
             console.log('Initialized:', data);
             this.playerId = data.id;
             this.playerTeam = data.team;
-            
+
             // Display team info
             this.showTeamNotification(data.team);
-            
+
             // Add existing players
             data.players.forEach(player => {
                 if (player.id !== this.playerId) {
                     this.remotePlayerManager.addPlayer(player);
                 }
             });
-            
+
+            // Populate initial scoreboard
+            if (data.scoreboard) {
+                this.scoreboardData = data.scoreboard;
+            }
+            if (data.teamScores) {
+                this.teamScores = data.teamScores;
+            }
+            this.matchEnded = data.matchEnded || false;
+
             // Start sending updates
             this.startUpdateLoop();
         });
-        
+
         this.socket.on('playerJoined', (data) => {
             console.log('Player joined:', data);
             if (data.id !== this.playerId) {
                 this.remotePlayerManager.addPlayer(data);
             }
         });
-        
+
         this.socket.on('playerMoved', (data) => {
             if (data.id !== this.playerId) {
                 this.remotePlayerManager.updatePlayer(data);
             }
         });
-        
+
         this.socket.on('playerWeaponChanged', (data) => {
             if (data.id !== this.playerId) {
                 this.remotePlayerManager.changeWeapon(data.id, data.weapon);
             }
         });
-        
+
         this.socket.on('playerShot', (data) => {
             if (data.id !== this.playerId) {
                 // Show muzzle flash or effect for remote player
                 this.remotePlayerManager.playShootEffect(data);
             }
         });
-        
+
         this.socket.on('tookDamage', (data) => {
             console.log(`💥 Took ${data.damage} damage from ${data.attackerId}. Health: ${data.health}`);
             takeDamage(data.damage);
-            
+
             if (this.onTookDamage) {
                 this.onTookDamage(data);
             }
         });
-        
+
         this.socket.on('damageConfirmed', (data) => {
             console.log(`✅ Hit confirmed on ${data.targetId}. Damage: ${data.damage}, Remaining health: ${data.remainingHealth}`);
         });
-        
+
         this.socket.on('playerDied', (data) => {
             console.log(`☠️ You were killed by ${data.killerId}`);
         });
-        
+
         this.socket.on('playerKilled', (data) => {
             console.log(`🎯 You killed ${data.victimId}`);
             if (this.onPlayerKilled) {
                 this.onPlayerKilled(data);
             }
         });
-        
+
+        this.socket.on('scoreboardUpdate', (data) => {
+            console.log('Scoreboard updated:', data);
+            this.scoreboardData = data.players || [];
+            this.teamScores = data.teamScores || { red: 0, blue: 0 };
+            this.matchEnded = data.matchEnded || false;
+        });
+
+        this.socket.on('matchWin', (data) => {
+            console.log('Match Ended! Winner:', data.winner);
+            this.matchEnded = true;
+            this.teamScores = { red: data.redTeamKills, blue: data.blueTeamKills };
+            if (this.onMatchWin) {
+                this.onMatchWin(data);
+            }
+        });
+
         this.socket.on('respawned', (data) => {
             console.log(`♻️ Respawned with ${data.health} health`);
             respawn();
         });
-        
+
         this.socket.on('playerLeft', (data) => {
             console.log('Player left:', data.id);
             this.remotePlayerManager.removePlayer(data.id);
         });
-        
+
         this.socket.on('disconnect', () => {
             console.log('❌ Disconnected from server');
             this.connected = false;
             this.stopUpdateLoop();
         });
-        
+
         this.socket.on('connect_error', (error) => {
             console.error('Connection error:', error);
         });
     }
-    
+
     showTeamNotification(team) {
         const notification = document.createElement('div');
         notification.style.cssText = `
@@ -157,7 +185,7 @@ class NetworkManager {
             <div>YOU ARE TEAM</div>
             <div style="font-size: 48px; margin-top: 10px;">${team.toUpperCase()}</div>
         `;
-        
+
         // Add animation
         const style = document.createElement('style');
         style.textContent = `
@@ -167,40 +195,40 @@ class NetworkManager {
             }
         `;
         document.head.appendChild(style);
-        
+
         document.body.appendChild(notification);
-        
+
         setTimeout(() => {
             notification.style.transition = 'opacity 0.5s';
             notification.style.opacity = '0';
             setTimeout(() => notification.remove(), 500);
         }, 3000);
     }
-    
+
     startUpdateLoop() {
         if (this.updateInterval) return;
-        
+
         this.updateInterval = setInterval(() => {
             if (this.connected && this.socket) {
                 this.socket.emit('playerUpdate', this.localPlayerData);
             }
         }, this.UPDATE_RATE);
     }
-    
+
     stopUpdateLoop() {
         if (this.updateInterval) {
             clearInterval(this.updateInterval);
             this.updateInterval = null;
         }
     }
-    
+
     updateLocalPlayer(data) {
         this.localPlayerData = {
             ...this.localPlayerData,
             ...data
         };
     }
-    
+
     sendShoot(position, direction, weapon) {
         if (this.connected && this.socket) {
             this.socket.emit('playerShoot', {
@@ -210,7 +238,7 @@ class NetworkManager {
             });
         }
     }
-    
+
     sendHitPlayer(targetId, damage) {
         if (this.connected && this.socket) {
             console.log(`Sending hit to ${targetId} for ${damage} damage`);
@@ -220,21 +248,21 @@ class NetworkManager {
             });
         }
     }
-    
+
     changeWeapon(weapon) {
         if (this.connected && this.socket) {
             this.socket.emit('weaponChange', { weapon });
         }
     }
-    
+
     getRemotePlayers() {
         return this.remotePlayerManager.getPlayers();
     }
-    
+
     update(deltaTime) {
         this.remotePlayerManager.update(deltaTime);
     }
-    
+
     disconnect() {
         this.stopUpdateLoop();
         if (this.socket) {

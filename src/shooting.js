@@ -12,6 +12,13 @@ import { addShootKick } from "./crosshair.js";
 import { spawnImpactEffect } from "./impactEffect.js";
 import { spawnMuzzleFlash } from './muzzleFlash.js';
 import { spawnRocket } from './rocket.js';
+
+// Network manager for multiplayer
+let networkManager = null;
+export function setNetworkManager(nm) {
+  networkManager = nm;
+}
+
 const bullets = [];
 
 /**
@@ -322,6 +329,46 @@ export function updateBullets(deltaTime) {
           bullets.splice(i, 1);
           continue;
         }
+      }
+
+      // Check remote players (MULTIPLAYER)
+      if (networkManager) {
+        const remotePlayers = networkManager.getRemotePlayers();
+        let hitRemotePlayer = false;
+        
+        for (const remotePlayer of remotePlayers) {
+          // Check if bullet hits remote player's bounding box
+          const playerPos = remotePlayer.group.position;
+          const bulletPos = new THREE.Vector3(curr.x, curr.y, curr.z);
+          const distance = bulletPos.distanceTo(playerPos);
+          
+          // Simple sphere collision (radius ~0.5m for player)
+          if (distance < 0.6) {
+            console.log(`🎯 Hit remote player ${remotePlayer.id}!`);
+            
+            // Send hit event to server
+            networkManager.sendHitPlayer(remotePlayer.id, bullet.damage || 10);
+            
+            // Show hitmarker
+            showHitmarker();
+            
+            // Spawn impact effect
+            spawnImpactEffect(
+              bulletPos,
+              new THREE.Vector3(0, 1, 0),
+              "enemy"
+            );
+            
+            // Remove bullet
+            scene.remove(bullet.mesh);
+            world.removeBody(bullet.body);
+            bullets.splice(i, 1);
+            hitRemotePlayer = true;
+            break;
+          }
+        }
+        
+        if (hitRemotePlayer) continue;
       }
     }
 

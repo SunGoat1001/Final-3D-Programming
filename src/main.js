@@ -24,6 +24,7 @@ import { initHitmarker } from './hitmarker.js';
 import { updateCrosshair } from './crosshair.js';
 import { updateMuzzleFlashes } from './muzzleFlash.js';
 import './ui/killFeedInstance.js';
+import { ScoreboardUI } from './ui/ScoreboardUI.js';
 
 // Multiplayer
 import { networkManager } from './NetworkManager.js';
@@ -69,6 +70,7 @@ const controls = new PointerLockControlsCannon(camera, sphereBody);
 // ===========================
 const weaponManager = new WeaponManager(camera);
 const weaponUI = new WeaponUI();
+const scoreboardUI = new ScoreboardUI();
 
 // Set up weapon callbacks
 weaponManager.onShootCallback = (shotData) => {
@@ -197,7 +199,7 @@ function animate() {
     // Send local player position to network
     const playerPos = getPlayerPosition();
     camera.getWorldDirection(new THREE.Vector3()); // Update direction
-    
+
     networkManager.updateLocalPlayer({
         position: {
             x: playerPos.x,
@@ -218,9 +220,14 @@ function animate() {
         characterName: weaponManager.characterName || 'messi',
         modelLoaded: weaponManager.model != null
     });
-    
+
     // Update remote players
     networkManager.update(deltaTime);
+
+    // Update Scoreboard UI if visible
+    if (scoreboardUI.isVisible) {
+        scoreboardUI.update();
+    }
 
     // Render scene
     renderer.render(scene, camera);

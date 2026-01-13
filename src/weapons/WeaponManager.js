@@ -13,6 +13,7 @@ import {
     WeaponType
 } from './WeaponData.js';
 import { scene } from '../scene.js';
+import { networkManager } from '../NetworkManager.js';
 import {
     playRifleShot,
     playRifleReload,
@@ -534,6 +535,11 @@ export class WeaponManager {
      * @returns {Object|null} Shot data or null if can't shoot
      */
     tryShoot() {
+        // 0. Can't shoot if match is ended
+        if (networkManager.matchEnded) {
+            return null;
+        }
+
         // 1. Can't shoot while reloading
         if (this.isReloading) {
             return null;

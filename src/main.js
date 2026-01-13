@@ -25,6 +25,17 @@ import { updateCrosshair } from './crosshair.js';
 import { updateMuzzleFlashes } from './muzzleFlash.js';
 import './ui/killFeedInstance.js';
 
+// Multiplayer
+import { networkManager } from './NetworkManager.js';
+import { setNetworkManager } from './shooting.js';
+import { getPlayerPosition } from './player.js';
+
+// Setup network manager for shooting
+setNetworkManager(networkManager);
+
+// Global camera reference for remote players
+window.camera = camera;
+
 // ===========================
 // PHYSICS SETUP
 // ===========================
@@ -88,6 +99,18 @@ weaponManager.onCharacterLoaded = (name) => {
 
 // Initial UI update
 weaponUI.updateWeaponInfo(weaponManager.getWeaponInfo());
+
+// ===========================
+// MULTIPLAYER CONNECTION
+// ===========================
+networkManager.connect('http://localhost:3001');
+
+// Sync weapon changes to network
+weaponManager.onWeaponSwitch = (weapon, ammoState) => {
+    weaponUI.updateWeaponInfo(weaponManager.getWeaponInfo());
+    console.log(`Switched to ${weapon.name}`);
+    networkManager.changeWeapon(weapon.id);
+};
 
 // Set shoot callback - now handled in animate for Auto, and here for Single
 controls.onShoot = () => {
@@ -167,6 +190,37 @@ function animate() {
     updateEnemy();
     // Update ammo pickups
     updateAmmoPickups(sphereBody, weaponManager);
+
+    // ===========================
+    // MULTIPLAYER UPDATE
+    // ===========================
+    // Send local player position to network
+    const playerPos = getPlayerPosition();
+    camera.getWorldDirection(new THREE.Vector3()); // Update direction
+    
+    networkManager.updateLocalPlayer({
+        position: {
+            x: playerPos.x,
+            y: playerPos.y,
+            z: playerPos.z
+        },
+        rotation: {
+            x: camera.rotation.x,
+            y: camera.rotation.y,
+            z: camera.rotation.z
+        },
+        bodyRotation: sphereBody.quaternion.y || 0,
+        currentWeapon: weaponManager.currentWeapon.id,
+        weaponState: {
+            isAiming: weaponManager.isAiming || false,
+            isShooting: controls.isMouseDown || false
+        },
+        characterName: weaponManager.characterName || 'messi',
+        modelLoaded: weaponManager.model != null
+    });
+    
+    // Update remote players
+    networkManager.update(deltaTime);
 
     // Render scene
     renderer.render(scene, camera);

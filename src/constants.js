@@ -6,7 +6,7 @@
 // Set to >1 to enlarge the entire map & physics world,
 // or <1 to shrink. All world-unit inputs remain unscaled
 // and are multiplied internally.
-export const WORLD_SCALE = 2;
+export const WORLD_SCALE = 2.5;
 
 // Camera
 export const FOV = 75;

@@ -13,7 +13,7 @@ export class KillFeed {
         BAZOOKA: '🚀',
         GRENADE: '💣',
         default: 'textures/default.png'
-    };
+    }
 
 
         // Create container
@@ -67,8 +67,8 @@ export class KillFeed {
    // Weapon icon (PNG)
 const weaponEl = document.createElement('img');
 weaponEl.src = icon;
-weaponEl.style.width = '28px';
-weaponEl.style.height = '28px';
+weaponEl.style.width = '20px';
+weaponEl.style.height = '20px';
 weaponEl.style.objectFit = 'contain';
 weaponEl.style.filter = 'drop-shadow(0 0 2px rgba(0,0,0,0.6))';
 

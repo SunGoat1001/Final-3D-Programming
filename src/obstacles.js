@@ -25,6 +25,7 @@ export function initObstacles() {
     createObstacle(-3.26903, -5.62136, 0.233078, 1, 0.05, 0.3, 0, THREE.MathUtils.degToRad(270), THREE.MathUtils.degToRad(27.1));
 
     // Create ceiling
+    createObstacle(1, 0, 1, 6.4, 0.05, 2, 0, 0, THREE.MathUtils.degToRad(180));
     createObstacle(-2.15548, 7.08391, 1, 4.5, 0.05, 1.8, 0, 0, THREE.MathUtils.degToRad(180));
     createObstacle(-0.03, -7.12433, 1, 8, 0.05, 1.8, 0, 0, THREE.MathUtils.degToRad(180));
 
@@ -68,7 +69,16 @@ export function initObstacles() {
     createObstacle(-0.420204, -6.46859, 0.4 * 1.5, 0.4, 0.4, 0.4);
     createObstacle(-0.827671, -6.46859, 0.4 * 1.5, 0.4, 0.4, 0.4);
     createObstacle(-1.74151, -6.46859, 0.4 * 1.5, 0.4, 0.4, 0.4);
+    createObstacle(2.53358, -6.33609, 1.25, 0.4, 0.4, 0.4);
+    createObstacle(2.53358, -6.33609, 1.25 * 1.3, 0.4, 0.4, 0.4);
+    createObstacle(-1.7347, -6.33525, 1.25 * 1.3, 0.4, 0.4, 0.4);
+    createObstacle(-1.7347, -6.33525, 1.25, 0.4, 0.4, 0.4);
+    createObstacle(0.405821, -6.35133, 1.25, 0.4, 0.4, 0.4);
+    createObstacle(0.405821, -6.35133, 1.25 * 1.3, 0.4, 0.4, 0.4);
+    createObstacle(0.810831, -6.35133, 1.25, 0.4, 0.4, 0.4);
+    createObstacle(0.810831, -6.35133, 1.25 * 1.3, 0.4, 0.4, 0.4);
 
+    // red
     createObstacle(-3.52855, 4.85, 0.5, 0.9, 0.9, 0.6);
     createObstacle(0.51475, 3.64764, 0, 0.35, 0.25, 0.35);
     createObstacle(3.77097, 7.80309, 0, 0.35, 0.25, 0.35);
@@ -79,6 +89,11 @@ export function initObstacles() {
     createObstacle(2.30259, -4.16989, 0, 0.35, 0.25, 0.35);
     createObstacle(0.007707, -5.51237, 0, 0.35, 0.25, 0.35);
     createObstacle(-2.11699, -6.74814, 0, 0.35, 0.25, 0.35);
+    createObstacle(0.693441, 1.18429, 1.2, 0.35, 0.4, 0.35);
+    createObstacle(-2.01589, 0.044855, 1.2, 0.35, 0.4, 0.35);
+    createObstacle(-2.01589, 0.449488, 1.2, 0.35, 0.4, 0.35);
+    createObstacle(-3.37601, 6.36263, 1.2, 0.35, 0.4, 0.35);
+
 
     createObstacle(2.03169, 1.655, 0, 0.5, 0.5, 0.5);
     createObstacle(3.74457, 5.43362, 0, 0.5, 0.5, 0.5);
@@ -87,19 +102,50 @@ export function initObstacles() {
     createObstacle(2.39303, 0, 1.25, 0.5, 0.5, 0.5);
     createObstacle(1.13263, 1.13101, 1.25, 0.5, 0.5, 0.5);
     createObstacle(2.03169, -1.25, 0, 0.5, 0.5, 0.5);
-    createObstacle(3.28352, -2.42351, 0, 0.5, 0.5, 0.5);
+    createObstacle(3.28352, -2.42351, 0, 0.38, 0.38, 0.38);
     createObstacle(0.455356, -5.86903, 0, 0.5, 0.5, 0.5);
     createObstacle(-2.24637, -4.70349, 0, 0.5, 0.5, 0.5);
 
     // Cái thùng (giống thùng dầu)
-    createObstacle(-3.88924, 7.89912, 1.23, 0.2, 0.25, 0.2);
-    createObstacle(-0.330524, 6.26758, 1.23, 0.2, 0.25, 0.2);
-    createObstacle(-3.88522, -2.95837, 0, 0.2, 0.25, 0.2);
-    createObstacle(0.560629, -1.11662, 0, 0.2, 0.25, 0.2);
-    createObstacle(0.403173, 1.28069, 1.2, 0.2, 0.25, 0.2);
-    createObstacle(-1.83346, -4.57801, 0, 0.2, 0.25, 0.2);
-    createObstacle(-1.82254, -4.84904, 0, 0.2, 0.25, 0.2);
+    createObstacle(-0.761102, -6.3548, 1.23, 0.2, 0.3, 0.2);
+    createObstacle(-0.537347, -6.3548, 1.23, 0.2, 0.3, 0.2);
+    createObstacle(-2.3486, 0.125967, 0, 0.2, 0.3, 0.2);
+    createObstacle(-3.88924, 7.89912, 1.23, 0.2, 0.3, 0.2);
+    createObstacle(-0.330524, 6.26758, 1.23, 0.2, 0.3, 0.2);
+    createObstacle(-3.88522, -2.95837, 0, 0.2, 0.3, 0.2);
+    createObstacle(0.560629, -1.11662, 0, 0.2, 0.3, 0.2);
+    createObstacle(0.403173, 1.28069, 1.2, 0.18, 0.3, 0.18);
 
+    createObstacle(-0.153038, -0.248487, 1.55, 0.18, 0.3, 0.18);
+    createObstacle(-0.153038, -0.468271, 1.55, 0.18, 0.3, 0.18);
+    createObstacle(-0.153038, -0.686443, 1.55, 0.18, 0.3, 0.18);
+    createObstacle(-0.268058, -0.686443, 1.2, 0.18, 0.3, 0.18);
+    createObstacle(-0.268058, -0.468271, 1.2, 0.18, 0.3, 0.18);
+    createObstacle(-0.268058, -0.248487, 1.2, 0.18, 0.3, 0.18);
+    createObstacle(-0.043407, -0.248487, 1.2, 0.18, 0.3, 0.18);
+    createObstacle(-0.043407, -0.468271, 1.2, 0.18, 0.3, 0.18);
+    createObstacle(-0.043407, -0.686443, 1.2, 0.18, 0.3, 0.18);
+
+    createObstacle(-1.83346, -4.57801, 0, 0.2, 0.3, 0.2);
+    createObstacle(-1.82254, -4.84904, 0, 0.2, 0.3, 0.2);
+    createObstacle(-3.89919, -3.77048, 0, 0.2, 0.3, 0.2);
+    createObstacle(-3.89919, -3.54346, 0, 0.2, 0.3, 0.2);
+    createObstacle(-3.87589, 3.32009, 0, 0.2, 0.3, 0.2);
+    createObstacle(-3.87589, 3.56059, 0, 0.2, 0.3, 0.2);
+    createObstacle(-3.87589, 3.80046, 0, 0.2, 0.3, 0.2);
+    createObstacle(-3.87589, 3.42983, 0.35 * 1.5, 0.2, 0.3, 0.2);
+    createObstacle(-3.87589, 3.67519, 0.35 * 1.5, 0.2, 0.3, 0.2);
+    createObstacle(-3.89919, -3.65515, 0.35 * 1.5, 0.2, 0.3, 0.2);
+
+    // ván trượng si măng
+    createObstacle(3.77669, 2.10401, 0.4, 2.6, 0.08, 0.5, 0, THREE.MathUtils.degToRad(90), THREE.MathUtils.degToRad(26.1));
+    createObstacle(3.77669, 2.10401, 0, 2.6, 0.08, 0.5, 0, THREE.MathUtils.degToRad(90), THREE.MathUtils.degToRad(26.1));
+    createObstacle(3.77669, 2.10401, -0.4, 2.6, 0.08, 0.5, 0, THREE.MathUtils.degToRad(90), THREE.MathUtils.degToRad(26.1));
+    createObstacle(3.77669, -2.10401, 0.4, 2.6, 0.08, 0.5, 0, -THREE.MathUtils.degToRad(90), THREE.MathUtils.degToRad(26.1));
+    createObstacle(3.77669, -2.10401, 0, 2.6, 0.08, 0.5, 0, -THREE.MathUtils.degToRad(90), THREE.MathUtils.degToRad(26.1));
+    createObstacle(3.77669, -2.10401, -0.4, 2.6, 0.08, 0.5, 0, -THREE.MathUtils.degToRad(90), THREE.MathUtils.degToRad(26.1));
+
+    // ván gỗ trượt
     createObstacle(-0.558688, 7.89912, 1.2, 0.6, 0.3, 0.2);
     createObstacle(1.49515, 7.7, 0.543078, 2.8, 0.08, 0.85, 0, 0, THREE.MathUtils.degToRad(22.1));
 }

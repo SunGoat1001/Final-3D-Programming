@@ -207,6 +207,7 @@ io.on('connection', (socket) => {
                 // Update team scores
                 if (attacker.team === 'red') redTeamKills++;
                 else blueTeamKills++;
+                
 
                 console.log(`[Score] RED: ${redTeamKills} | BLUE: ${blueTeamKills}`);
 

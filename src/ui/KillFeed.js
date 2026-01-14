@@ -6,13 +6,15 @@ export class KillFeed {
 
         // Weapon icons (emoji for now - later replace with PNG)
         this.weaponIcons = {
-            rifle: '🔫',
-            shotgun: '💥',
-            sword: '🗡️',
-            bazooka: '🚀',
-            grenade: '💣',
-            default: '❌'
-        };
+        PISTOL: '🔫',
+        RIFLE: '🔫',
+        SHOTGUN: '💥',
+        SWORD: '🗡️',
+        BAZOOKA: '🚀',
+        GRENADE: '💣',
+        default: 'textures/default.png'
+    }
+
 
         // Create container
         this.container = document.createElement('div');
@@ -62,10 +64,13 @@ export class KillFeed {
         killerEl.textContent = killer;
         killerEl.style.color = '#4ade80'; // green
 
-        // Weapon
-        const weaponEl = document.createElement('span');
-        weaponEl.textContent = icon;
-        weaponEl.style.fontSize = '18px';
+   // Weapon icon (PNG)
+const weaponEl = document.createElement('img');
+weaponEl.src = icon;
+weaponEl.style.width = '20px';
+weaponEl.style.height = '20px';
+weaponEl.style.objectFit = 'contain';
+weaponEl.style.filter = 'drop-shadow(0 0 2px rgba(0,0,0,0.6))';
 
         // Right (victim)
         const victimEl = document.createElement('span');

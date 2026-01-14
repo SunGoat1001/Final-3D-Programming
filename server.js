@@ -207,7 +207,16 @@ io.on('connection', (socket) => {
                 // Update team scores
                 if (attacker.team === 'red') redTeamKills++;
                 else blueTeamKills++;
-                
+                                // ===== KILL FEED BROADCAST =====
+                const killerName = attacker.team === 'blue' ? 'Messi' : 'Ronaldo';
+                const victimName = victim.team === 'blue' ? 'Messi' : 'Ronaldo';
+
+                io.emit("killFeed", {
+                    killer: killerName,
+                    victim: victimName,
+                    weapon: attacker.currentWeapon
+                });
+
 
                 console.log(`[Score] RED: ${redTeamKills} | BLUE: ${blueTeamKills}`);
 

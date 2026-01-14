@@ -1,7 +1,7 @@
 import { io } from 'socket.io-client';
 import { RemotePlayerManager } from './RemotePlayerManager.js';
 import { takeDamage, respawn } from './player.js';
-
+import { killFeed } from './ui/killFeedInstance.js';
 class NetworkManager {
     constructor() {
         this.socket = null;
@@ -47,7 +47,10 @@ class NetworkManager {
             console.log('✅ Connected to server');
             this.connected = true;
         });
-
+        this.socket.on("killFeed", (data) => {
+            console.log("🔥 KillFeed:", data);
+            killFeed.addKill(data.killer, data.victim, data.weapon);
+        });
         this.socket.on('init', (data) => {
             console.log('Initialized:', data);
             this.playerId = data.id;

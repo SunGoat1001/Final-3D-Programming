@@ -332,44 +332,56 @@ export function updateBullets(deltaTime) {
       }
 
       // Check remote players (MULTIPLAYER)
-      if (networkManager) {
-        const remotePlayers = networkManager.getRemotePlayers();
-        let hitRemotePlayer = false;
-        
-        for (const remotePlayer of remotePlayers) {
-          // Check if bullet hits remote player's bounding box
-          const playerPos = remotePlayer.group.position;
-          const bulletPos = new THREE.Vector3(curr.x, curr.y, curr.z);
-          const distance = bulletPos.distanceTo(playerPos);
-          
-          // Simple sphere collision (radius ~0.5m for player)
-          if (distance < 0.6) {
-            console.log(`🎯 Hit remote player ${remotePlayer.id}!`);
-            
-            // Send hit event to server
-            networkManager.sendHitPlayer(remotePlayer.id, bullet.damage || 10);
-            
-            // Show hitmarker
-            showHitmarker();
-            
-            // Spawn impact effect
-            spawnImpactEffect(
-              bulletPos,
-              new THREE.Vector3(0, 1, 0),
-              "enemy"
-            );
-            
-            // Remove bullet
-            scene.remove(bullet.mesh);
-            world.removeBody(bullet.body);
-            bullets.splice(i, 1);
-            hitRemotePlayer = true;
-            break;
-          }
-        }
-        
-        if (hitRemotePlayer) continue;
-      }
+  // Check remote players (MULTIPLAYER)
+if (networkManager) {
+  const remotePlayers = networkManager.getRemotePlayers();
+  let hitRemotePlayer = false;
+
+  for (const remotePlayer of remotePlayers) {
+    const bulletPos = new THREE.Vector3(curr.x, curr.y, curr.z);
+
+    // ===== CAPSULE HITBOX =====
+    const playerBase = remotePlayer.group.position.clone();
+    
+    playerBase.y -= 0.1; // chân
+    const playerHeight = 1.8;
+    const radius = 0.4;
+
+    const a = playerBase.clone();        // foot
+    const b = playerBase.clone();
+    b.y += playerHeight;                 // head
+
+    const ab = b.clone().sub(a);
+    const ap = bulletPos.clone().sub(a);
+
+    const t = Math.max(0, Math.min(1, ap.dot(ab) / ab.lengthSq()));
+    const closest = a.clone().add(ab.multiplyScalar(t));
+
+    const dist = closest.distanceTo(bulletPos);
+
+    if (dist < radius) {
+      console.log(`🎯 Hit remote player ${remotePlayer.id}!`);
+
+      networkManager.sendHitPlayer(remotePlayer.id, bullet.damage || 10);
+      showHitmarker();
+
+      spawnImpactEffect(
+        bulletPos,
+        new THREE.Vector3(0, 1, 0),
+        "enemy"
+      );
+
+      scene.remove(bullet.mesh);
+      world.removeBody(bullet.body);
+      bullets.splice(i, 1);
+      hitRemotePlayer = true;
+      break;
+    }
+  }
+
+  if (hitRemotePlayer) continue;
+}
+
     }
 
     // Update mesh position to match physics body

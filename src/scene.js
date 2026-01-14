@@ -18,6 +18,8 @@ export const camera = new THREE.PerspectiveCamera(
     CAMERA_NEAR,
     CAMERA_FAR
 );
+camera.layers.enable(0);
+camera.layers.disable(2);
 camera.position.set(0, 5, 0);
 
 // ===========================

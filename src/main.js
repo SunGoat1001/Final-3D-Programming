@@ -25,6 +25,7 @@ import { updateCrosshair } from './crosshair.js';
 import { updateMuzzleFlashes } from './muzzleFlash.js';
 import './ui/killFeedInstance.js';
 import { ScoreboardUI } from './ui/ScoreboardUI.js';
+import { renderMinimap } from './minimap.js';
 
 // Multiplayer
 import { networkManager } from './NetworkManager.js';
@@ -230,7 +231,14 @@ function animate() {
     }
 
     // Render scene
-    renderer.render(scene, camera);
+    // Render main view
+renderer.setViewport(0, 0, window.innerWidth, window.innerHeight);
+renderer.setScissorTest(false);
+renderer.render(scene, camera);
+
+// Render minimap
+renderMinimap();
+
 }
 
 // ===========================

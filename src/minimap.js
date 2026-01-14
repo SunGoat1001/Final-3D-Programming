@@ -1,8 +1,7 @@
 import * as THREE from 'three';
 import { scene, renderer, camera } from './scene.js';
 import { getPlayerPosition } from './player.js';
-import { getEnemyMesh } from './enemy.js';
-
+import { networkManager } from './NetworkManager.js';
 // ===========================
 // CONFIG
 // ===========================
@@ -32,18 +31,33 @@ const playerArrow = new THREE.Mesh(
 );
 playerArrow.rotation.x = Math.PI / 2;
 playerArrow.layers.set(2);
+playerArrow.renderOrder = 1000;
+playerArrow.material.depthTest = false;
+playerArrow.material.depthWrite = false;
 scene.add(playerArrow);
 
 // ===========================
-// ENEMY DOT
+// REMOTE PLAYER DOTS
 // ===========================
-const enemyDot = new THREE.Mesh(
-    new THREE.CircleGeometry(0.7, 16),
-    new THREE.MeshBasicMaterial({ color: 0xff0000 })
-);
-enemyDot.layers.set(2);
-enemyDot.rotation.x = -Math.PI / 2;
-scene.add(enemyDot);
+const enemyArrows = new Map(); // playerId -> arrow mesh
+// playerId -> dot mesh
+
+function createEnemyArrow() {
+    const arrow = new THREE.Mesh(
+        new THREE.ConeGeometry(1, 2, 8), // Y chang playerArrow
+        new THREE.MeshBasicMaterial({ color: 0xff0000
+ })
+    );
+    arrow.rotation.x = Math.PI / 2;
+    arrow.layers.set(2);
+    arrow.renderOrder = 999;
+arrow.material.depthTest = false;
+arrow.material.depthWrite = false;
+    scene.add(arrow);
+    return arrow;
+}
+
+
 
 // ===========================
 // FOG OF WAR
@@ -127,14 +141,36 @@ export function renderMinimap() {
     playerArrow.position.set(pos.x, 0.5, pos.z);
     playerArrow.rotation.z = -angle;
 
-    // Enemy dot
-    const enemy = getEnemyMesh();
-    if (enemy) {
-        enemyDot.visible = true;
-        enemyDot.position.set(enemy.position.x, 0.5, enemy.position.z);
-    } else {
-        enemyDot.visible = false;
+const remotePlayers = networkManager.getRemotePlayers();
+const aliveIds = new Set();
+
+remotePlayers.forEach(player => {
+    const id = player.id;
+    aliveIds.add(id);
+
+    let arrow = enemyArrows.get(id);
+    if (!arrow) {
+        arrow = createEnemyArrow();
+        enemyArrows.set(id, arrow);
     }
+
+    const p = player.group.position;
+    arrow.position.set(p.x, 0.5, p.z);
+
+    // Rotate arrow theo hướng nhìn của player đó
+    arrow.rotation.z = -player.group.rotation.y;
+});
+
+// Remove arrows of disconnected players
+enemyArrows.forEach((arrow, id) => {
+    if (!aliveIds.has(id)) {
+        scene.remove(arrow);
+        arrow.geometry.dispose();
+        arrow.material.dispose();
+        enemyArrows.delete(id);
+    }
+});
+
 
     // Update fog
     revealFog(pos.x, pos.z);

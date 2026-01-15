@@ -4,7 +4,7 @@
 // ===========================
 
 import { initializeApp } from 'firebase/app';
-import { getDatabase, ref, set, update, push, onValue, onChildAdded, onChildRemoved, onChildChanged, remove } from 'firebase/database';
+import { getDatabase, ref, set, update, push, onValue, onChildAdded, onChildRemoved, onChildChanged, remove, onDisconnect } from 'firebase/database';
 import { getAuth, signInAnonymously } from 'firebase/auth';
 import { RemotePlayerManager } from './RemotePlayerManager.js';
 import { takeDamage, respawn } from './player.js';
@@ -55,6 +55,9 @@ class NetworkManager {
 
         this.updateInterval = null;
         this.UPDATE_RATE = 1000 / 30; // 30 updates per second
+        this.heartbeatInterval = null;
+        this.HEARTBEAT_RATE = 1000 / 5; // Heartbeat every 200ms (5 Hz)
+        this.PLAYER_TIMEOUT = 5000; // Remove player if no update for 5 seconds
 
         this.onPlayerKilled = null;
         this.onTookDamage = null;
@@ -64,6 +67,8 @@ class NetworkManager {
 
         // Firebase listener unsubscribers
         this.playerListeners = new Map();
+        this.connectionListener = null;
+        this.timeoutCheckerInterval = null;
     }
 
     async connect(serverUrl = SERVER_URL) {
@@ -102,7 +107,7 @@ class NetworkManager {
             uid: this.uid,
             team: Math.random() > 0.5 ? 'red' : 'blue',
             health: 100,
-            lastUpdate: Date.now()
+            lastSeen: Date.now()
         };
 
         this.playerTeam = initialPlayerData.team;
@@ -111,12 +116,24 @@ class NetworkManager {
             await set(playerRef, initialPlayerData);
             console.log('✅ Player initialized in Firebase');
 
+            // Register onDisconnect to remove player when connection is lost
+            // This happens when: tab closes, network drops, crash, etc.
+            try {
+                await onDisconnect(playerRef).remove();
+                console.log('✅ Registered onDisconnect cleanup');
+            } catch (error) {
+                console.error('❌ Error registering onDisconnect:', error);
+            }
+
             this.connected = true;
             this.showTeamNotification(this.playerTeam);
 
             // Setup listeners
             this.setupPlayerListeners();
+            this.setupConnectionStateListener();
             this.startUpdateLoop();
+            this.startHeartbeat();
+            this.startTimeoutChecker();
         } catch (error) {
             console.error('❌ Error initializing player:', error);
         }
@@ -127,26 +144,32 @@ class NetworkManager {
 
         const playersRef = ref(this.db, `rooms/${this.roomId}/players`);
 
-        // Listen for other players
+        // Listen for other players joining
         onChildAdded(playersRef, (snapshot) => {
             const playerId = snapshot.key;
             const playerData = snapshot.val();
 
             if (playerId !== this.uid && !this.playerListeners.has(playerId)) {
-                console.log('👤 New player joined:', playerId);
+                console.log('👤 New player joined:', playerId, playerData);
                 this.remotePlayerManager.addPlayer({
                     id: playerId,
                     ...playerData
                 });
 
-                // Setup listener for this player's updates
+                // Setup continuous listener for this player's updates using onValue
+                // onValue triggers on initial load and every time data changes
                 const playerUpdateRef = ref(this.db, `rooms/${this.roomId}/players/${playerId}`);
-                const unsubscribe = onChildChanged(playerUpdateRef, (snapshot) => {
-                    const updatedData = snapshot.val();
-                    this.remotePlayerManager.updatePlayer({
-                        id: playerId,
-                        ...updatedData
-                    });
+                const unsubscribe = onValue(playerUpdateRef, (snapshot) => {
+                    if (snapshot.exists()) {
+                        const updatedData = snapshot.val();
+                        console.log(`📤 Player ${playerId} updated:`, updatedData.position);
+                        this.remotePlayerManager.updatePlayer({
+                            id: playerId,
+                            ...updatedData
+                        });
+                    }
+                }, (error) => {
+                    console.error(`❌ Error listening to player ${playerId}:`, error);
                 });
                 this.playerListeners.set(playerId, unsubscribe);
             }
@@ -174,6 +197,19 @@ class NetworkManager {
         // this.socket.on('playerJoined', (data) => { ... });
         // this.socket.on('playerMoved', (data) => { ... });
         // etc.
+    }
+
+    setupConnectionStateListener() {
+        console.log('📡 Listening to Firebase connection state...');
+
+        const connectedRef = ref(this.db, '.info/connected');
+        this.connectionListener = onValue(connectedRef, (snapshot) => {
+            if (snapshot.val() === true) {
+                console.log('🟢 Firebase connection established');
+            } else {
+                console.log('🔴 Firebase connection lost');
+            }
+        });
     }
 
     showTeamNotification(team) {
@@ -242,6 +278,53 @@ class NetworkManager {
         if (this.updateInterval) {
             clearInterval(this.updateInterval);
             this.updateInterval = null;
+        }
+    }
+
+    startHeartbeat() {
+        console.log('💓 Starting heartbeat...');
+        if (this.heartbeatInterval) return;
+
+        this.heartbeatInterval = setInterval(() => {
+            if (this.connected && this.db && this.uid) {
+                const playerRef = ref(this.db, `rooms/${this.roomId}/players/${this.uid}`);
+                update(playerRef, {
+                    lastSeen: Date.now()
+                }).catch(error => {
+                    console.error('❌ Error updating heartbeat:', error);
+                });
+            }
+        }, this.HEARTBEAT_RATE);
+    }
+
+    stopHeartbeat() {
+        if (this.heartbeatInterval) {
+            clearInterval(this.heartbeatInterval);
+            this.heartbeatInterval = null;
+        }
+    }
+
+    startTimeoutChecker() {
+        console.log('⏱️ Starting timeout checker...');
+        if (this.timeoutCheckerInterval) return;
+
+        this.timeoutCheckerInterval = setInterval(() => {
+            const now = Date.now();
+            this.remotePlayerManager.getPlayers().forEach(player => {
+                // Get the last update time from the current data
+                // We'll track this in the remote player manager
+                if (player.lastSeen && now - player.lastSeen > this.PLAYER_TIMEOUT) {
+                    console.log(`⏰ Player ${player.id} timed out (no update for ${this.PLAYER_TIMEOUT}ms)`);
+                    this.remotePlayerManager.removePlayer(player.id);
+                }
+            });
+        }, this.PLAYER_TIMEOUT);
+    }
+
+    stopTimeoutChecker() {
+        if (this.timeoutCheckerInterval) {
+            clearInterval(this.timeoutCheckerInterval);
+            this.timeoutCheckerInterval = null;
         }
     }
 
@@ -323,6 +406,8 @@ class NetworkManager {
     async disconnect() {
         console.log('🔌 Disconnecting from Firebase...');
         this.stopUpdateLoop();
+        this.stopHeartbeat();
+        this.stopTimeoutChecker();
 
         try {
             // ===== FIREBASE CLEANUP =====
@@ -330,7 +415,15 @@ class NetworkManager {
             this.playerListeners.forEach(unsubscribe => unsubscribe());
             this.playerListeners.clear();
 
+            // Stop listening to connection state
+            if (this.connectionListener) {
+                this.connectionListener();
+                this.connectionListener = null;
+            }
+
             // Remove player from Firebase
+            // Note: onDisconnect() already handles this automatically
+            // This is a backup explicit removal
             if (this.db && this.uid) {
                 const playerRef = ref(this.db, `rooms/${this.roomId}/players/${this.uid}`);
                 await remove(playerRef);

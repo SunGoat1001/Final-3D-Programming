@@ -2,6 +2,8 @@
 // GAME CONSTANTS
 // ===========================
 
+export const SERVER_URL = "https://gameserver-yarbrup5bq-uc.a.run.app";
+
 // World scaling
 // Set to >1 to enlarge the entire map & physics world,
 // or <1 to shrink. All world-unit inputs remain unscaled

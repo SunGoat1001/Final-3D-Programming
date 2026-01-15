@@ -2,6 +2,7 @@ import { io } from 'socket.io-client';
 import { RemotePlayerManager } from './RemotePlayerManager.js';
 import { takeDamage, respawn } from './player.js';
 import { killFeed } from './ui/killFeedInstance.js';
+import { SERVER_URL } from './constants.js';
 class NetworkManager {
     constructor() {
         this.socket = null;
@@ -32,7 +33,7 @@ class NetworkManager {
         this.matchEnded = false;
     }
 
-    connect(serverUrl = 'http://localhost:3001') {
+    connect(serverUrl = SERVER_URL) {
         console.log('Connecting to server...');
 
         this.socket = io(serverUrl, {

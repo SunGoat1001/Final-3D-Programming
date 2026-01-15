@@ -1,11 +1,41 @@
-import { io } from 'socket.io-client';
+// ===========================
+// FIREBASE-BASED NETWORK MANAGER
+// Socket.IO logic commented out and replaced with Firebase Realtime Database
+// ===========================
+
+import { initializeApp } from 'firebase/app';
+import { getDatabase, ref, set, update, push, onValue, onChildAdded, onChildRemoved, onChildChanged, remove } from 'firebase/database';
+import { getAuth, signInAnonymously } from 'firebase/auth';
 import { RemotePlayerManager } from './RemotePlayerManager.js';
 import { takeDamage, respawn } from './player.js';
 import { killFeed } from './ui/killFeedInstance.js';
 import { SERVER_URL } from './constants.js';
+
+// ===========================
+// FIREBASE CONFIGURATION
+// ===========================
+const firebaseConfig = {
+    apiKey: "AIzaSyCKu-4bB17z7dIPjEO9CjNNxJAX-ZQKQlo",
+    authDomain: "final-3d-programming.firebaseapp.com",
+    databaseURL: "https://final-3d-programming-default-rtdb.firebaseio.com",
+    projectId: "final-3d-programming",
+    storageBucket: "final-3d-programming.firebasestorage.app",
+    messagingSenderId: "383216444461",
+    appId: "1:383216444461:web:a48287fb15fb24bd9ec4a4"
+};
+
 class NetworkManager {
     constructor() {
-        this.socket = null;
+        // ===== SOCKET.IO (COMMENTED OUT) =====
+        // this.socket = null;
+
+        // ===== FIREBASE SETUP =====
+        this.app = null;
+        this.auth = null;
+        this.db = null;
+        this.uid = null;
+        this.roomId = null;
+
         this.connected = false;
         this.playerId = null;
         this.playerTeam = null;
@@ -31,140 +61,119 @@ class NetworkManager {
         this.scoreboardData = [];
         this.teamScores = { red: 0, blue: 0 };
         this.matchEnded = false;
+
+        // Firebase listener unsubscribers
+        this.playerListeners = new Map();
     }
 
-    connect(serverUrl = SERVER_URL) {
-        console.log('Connecting to server...');
+    async connect(serverUrl = SERVER_URL) {
+        console.log('🔥 Initializing Firebase...');
 
-        this.socket = io(serverUrl, {
-            transports: ['websocket', 'polling']
-        });
+        try {
+            // Initialize Firebase
+            this.app = initializeApp(firebaseConfig);
+            this.auth = getAuth(this.app);
+            this.db = getDatabase(this.app);
 
-        this.setupEventListeners();
+            // Sign in anonymously
+            const userCredential = await signInAnonymously(this.auth);
+            this.uid = userCredential.user.uid;
+            console.log('✅ Firebase Anonymous Auth Successful:', this.uid);
+
+            // Generate room ID (use first 8 chars of uid or custom room)
+            this.roomId = 'default-room'; // You can make this dynamic
+            this.playerId = this.uid;
+
+            // Initialize connection
+            this.initializeConnection();
+        } catch (error) {
+            console.error('❌ Firebase Connection Error:', error);
+        }
     }
 
-    setupEventListeners() {
-        this.socket.on('connect', () => {
-            console.log('✅ Connected to server');
+    async initializeConnection() {
+        console.log('🎮 Joining room:', this.roomId);
+
+        const playerRef = ref(this.db, `rooms/${this.roomId}/players/${this.uid}`);
+
+        // Initialize player data in Firebase
+        const initialPlayerData = {
+            ...this.localPlayerData,
+            uid: this.uid,
+            team: Math.random() > 0.5 ? 'red' : 'blue',
+            health: 100,
+            lastUpdate: Date.now()
+        };
+
+        this.playerTeam = initialPlayerData.team;
+
+        try {
+            await set(playerRef, initialPlayerData);
+            console.log('✅ Player initialized in Firebase');
+
             this.connected = true;
-        });
-        this.socket.on("killFeed", (data) => {
-            console.log("🔥 KillFeed:", data);
-            killFeed.addKill(data.killer, data.victim, data.weapon);
-        });
-        this.socket.on('init', (data) => {
-            console.log('Initialized:', data);
-            this.playerId = data.id;
-            this.playerTeam = data.team;
+            this.showTeamNotification(this.playerTeam);
 
-            // Display team info
-            this.showTeamNotification(data.team);
-
-            // Add existing players
-            data.players.forEach(player => {
-                if (player.id !== this.playerId) {
-                    this.remotePlayerManager.addPlayer(player);
-                }
-            });
-
-            // Populate initial scoreboard
-            if (data.scoreboard) {
-                this.scoreboardData = data.scoreboard;
-            }
-            if (data.teamScores) {
-                this.teamScores = data.teamScores;
-            }
-            this.matchEnded = data.matchEnded || false;
-
-            // Start sending updates
+            // Setup listeners
+            this.setupPlayerListeners();
             this.startUpdateLoop();
-        });
+        } catch (error) {
+            console.error('❌ Error initializing player:', error);
+        }
+    }
 
-        this.socket.on('playerJoined', (data) => {
-            console.log('Player joined:', data);
-            if (data.id !== this.playerId) {
-                this.remotePlayerManager.addPlayer(data);
+    setupPlayerListeners() {
+        console.log('📡 Setting up Firebase listeners...');
+
+        const playersRef = ref(this.db, `rooms/${this.roomId}/players`);
+
+        // Listen for other players
+        onChildAdded(playersRef, (snapshot) => {
+            const playerId = snapshot.key;
+            const playerData = snapshot.val();
+
+            if (playerId !== this.uid && !this.playerListeners.has(playerId)) {
+                console.log('👤 New player joined:', playerId);
+                this.remotePlayerManager.addPlayer({
+                    id: playerId,
+                    ...playerData
+                });
+
+                // Setup listener for this player's updates
+                const playerUpdateRef = ref(this.db, `rooms/${this.roomId}/players/${playerId}`);
+                const unsubscribe = onChildChanged(playerUpdateRef, (snapshot) => {
+                    const updatedData = snapshot.val();
+                    this.remotePlayerManager.updatePlayer({
+                        id: playerId,
+                        ...updatedData
+                    });
+                });
+                this.playerListeners.set(playerId, unsubscribe);
             }
         });
 
-        this.socket.on('playerMoved', (data) => {
-            if (data.id !== this.playerId) {
-                this.remotePlayerManager.updatePlayer(data);
+        // Listen for player disconnections
+        onChildRemoved(playersRef, (snapshot) => {
+            const playerId = snapshot.key;
+            if (playerId !== this.uid) {
+                console.log('👋 Player left:', playerId);
+                this.remotePlayerManager.removePlayer(playerId);
+
+                // Cleanup listener
+                const unsubscribe = this.playerListeners.get(playerId);
+                if (unsubscribe) {
+                    unsubscribe();
+                    this.playerListeners.delete(playerId);
+                }
             }
         });
 
-        this.socket.on('playerWeaponChanged', (data) => {
-            if (data.id !== this.playerId) {
-                this.remotePlayerManager.changeWeapon(data.id, data.weapon);
-            }
-        });
-
-        this.socket.on('playerShot', (data) => {
-            if (data.id !== this.playerId) {
-                // Show muzzle flash or effect for remote player
-                this.remotePlayerManager.playShootEffect(data);
-            }
-        });
-
-        this.socket.on('tookDamage', (data) => {
-            console.log(`💥 Took ${data.damage} damage from ${data.attackerId}. Health: ${data.health}`);
-            takeDamage(data.damage);
-
-            if (this.onTookDamage) {
-                this.onTookDamage(data);
-            }
-        });
-
-        this.socket.on('damageConfirmed', (data) => {
-            console.log(`✅ Hit confirmed on ${data.targetId}. Damage: ${data.damage}, Remaining health: ${data.remainingHealth}`);
-        });
-
-        this.socket.on('playerDied', (data) => {
-            console.log(`☠️ You were killed by ${data.killerId}`);
-        });
-
-        this.socket.on('playerKilled', (data) => {
-            console.log(`🎯 You killed ${data.victimId}`);
-            if (this.onPlayerKilled) {
-                this.onPlayerKilled(data);
-            }
-        });
-
-        this.socket.on('scoreboardUpdate', (data) => {
-            console.log('Scoreboard updated:', data);
-            this.scoreboardData = data.players || [];
-            this.teamScores = data.teamScores || { red: 0, blue: 0 };
-            this.matchEnded = data.matchEnded || false;
-        });
-
-        this.socket.on('matchWin', (data) => {
-            console.log('Match Ended! Winner:', data.winner);
-            this.matchEnded = true;
-            this.teamScores = { red: data.redTeamKills, blue: data.blueTeamKills };
-            if (this.onMatchWin) {
-                this.onMatchWin(data);
-            }
-        });
-
-        this.socket.on('respawned', (data) => {
-            console.log(`♻️ Respawned with ${data.health} health`);
-            respawn();
-        });
-
-        this.socket.on('playerLeft', (data) => {
-            console.log('Player left:', data.id);
-            this.remotePlayerManager.removePlayer(data.id);
-        });
-
-        this.socket.on('disconnect', () => {
-            console.log('❌ Disconnected from server');
-            this.connected = false;
-            this.stopUpdateLoop();
-        });
-
-        this.socket.on('connect_error', (error) => {
-            console.error('Connection error:', error);
-        });
+        // ===== COMMENTED OUT SOCKET.IO EVENTS =====
+        // this.socket.on('killFeed', (data) => { ... });
+        // this.socket.on('init', (data) => { ... });
+        // this.socket.on('playerJoined', (data) => { ... });
+        // this.socket.on('playerMoved', (data) => { ... });
+        // etc.
     }
 
     showTeamNotification(team) {
@@ -213,8 +222,18 @@ class NetworkManager {
         if (this.updateInterval) return;
 
         this.updateInterval = setInterval(() => {
-            if (this.connected && this.socket) {
-                this.socket.emit('playerUpdate', this.localPlayerData);
+            if (this.connected && this.db && this.uid) {
+                // ===== FIREBASE UPDATE (replaces socket.emit) =====
+                const playerRef = ref(this.db, `rooms/${this.roomId}/players/${this.uid}`);
+                update(playerRef, {
+                    ...this.localPlayerData,
+                    lastUpdate: Date.now()
+                }).catch(error => {
+                    console.error('❌ Error updating player:', error);
+                });
+
+                // ===== SOCKET.IO (COMMENTED OUT) =====
+                // this.socket.emit('playerUpdate', this.localPlayerData);
             }
         }, this.UPDATE_RATE);
     }
@@ -233,29 +252,63 @@ class NetworkManager {
         };
     }
 
-    sendShoot(position, direction, weapon) {
-        if (this.connected && this.socket) {
-            this.socket.emit('playerShoot', {
-                position,
-                direction,
-                weapon
-            });
+    async sendShoot(position, direction, weapon) {
+        if (this.connected && this.db && this.uid) {
+            try {
+                // ===== FIREBASE PUSH (replaces socket.emit 'playerShoot') =====
+                const shotsRef = ref(this.db, `rooms/${this.roomId}/shots`);
+                await push(shotsRef, {
+                    shooterId: this.uid,
+                    position,
+                    direction,
+                    weapon,
+                    timestamp: Date.now()
+                });
+
+                // ===== SOCKET.IO (COMMENTED OUT) =====
+                // this.socket.emit('playerShoot', { position, direction, weapon });
+            } catch (error) {
+                console.error('❌ Error sending shoot event:', error);
+            }
         }
     }
 
-    sendHitPlayer(targetId, damage) {
-        if (this.connected && this.socket) {
-            console.log(`Sending hit to ${targetId} for ${damage} damage`);
-            this.socket.emit('hitPlayer', {
-                targetId,
-                damage
-            });
+    async sendHitPlayer(targetId, damage) {
+        if (this.connected && this.db && this.uid) {
+            try {
+                // ===== FIREBASE PUSH (replaces socket.emit 'hitPlayer') =====
+                const hitsRef = ref(this.db, `rooms/${this.roomId}/hits`);
+                await push(hitsRef, {
+                    shooterId: this.uid,
+                    targetId,
+                    damage,
+                    timestamp: Date.now()
+                });
+                console.log(`📍 Sent hit to ${targetId} for ${damage} damage`);
+
+                // ===== SOCKET.IO (COMMENTED OUT) =====
+                // this.socket.emit('hitPlayer', { targetId, damage });
+            } catch (error) {
+                console.error('❌ Error sending hit:', error);
+            }
         }
     }
 
-    changeWeapon(weapon) {
-        if (this.connected && this.socket) {
-            this.socket.emit('weaponChange', { weapon });
+    async changeWeapon(weapon) {
+        if (this.connected && this.db && this.uid) {
+            try {
+                // ===== FIREBASE UPDATE (replaces socket.emit 'weaponChange') =====
+                const playerRef = ref(this.db, `rooms/${this.roomId}/players/${this.uid}`);
+                await update(playerRef, {
+                    currentWeapon: weapon,
+                    lastUpdate: Date.now()
+                });
+
+                // ===== SOCKET.IO (COMMENTED OUT) =====
+                // this.socket.emit('weaponChange', { weapon });
+            } catch (error) {
+                console.error('❌ Error changing weapon:', error);
+            }
         }
     }
 
@@ -267,10 +320,29 @@ class NetworkManager {
         this.remotePlayerManager.update(deltaTime);
     }
 
-    disconnect() {
+    async disconnect() {
+        console.log('🔌 Disconnecting from Firebase...');
         this.stopUpdateLoop();
-        if (this.socket) {
-            this.socket.disconnect();
+
+        try {
+            // ===== FIREBASE CLEANUP =====
+            // Unsubscribe from all listeners
+            this.playerListeners.forEach(unsubscribe => unsubscribe());
+            this.playerListeners.clear();
+
+            // Remove player from Firebase
+            if (this.db && this.uid) {
+                const playerRef = ref(this.db, `rooms/${this.roomId}/players/${this.uid}`);
+                await remove(playerRef);
+            }
+
+            this.connected = false;
+            console.log('✅ Disconnected from Firebase');
+
+            // ===== SOCKET.IO (COMMENTED OUT) =====
+            // this.socket.disconnect();
+        } catch (error) {
+            console.error('❌ Error during disconnect:', error);
         }
     }
 }

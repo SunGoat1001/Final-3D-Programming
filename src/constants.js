@@ -2,7 +2,10 @@
 // GAME CONSTANTS
 // ===========================
 
-export const SERVER_URL = "https://gameserver-yarbrup5bq-uc.a.run.app";
+// MULTIPLAYER - Firebase is now used instead of Socket.IO
+// Socket.IO Server URL (commented out)
+// export const SERVER_URL = "https://gameserver-yarbrup5bq-uc.a.run.app";
+export const SERVER_URL = ""; // Not used with Firebase
 
 // World scaling
 // Set to >1 to enlarge the entire map & physics world,

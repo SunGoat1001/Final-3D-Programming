@@ -26,20 +26,20 @@ const bullets = [];
  * @param {Object} shotData - Shot data containing weapon and shot info
  */
 export function processShot(shotData) {
-// === MUZZLE FLASH (REAL WEAPON POSITION) ===
-if (shotData.isRanged && shotData.shots.length > 0 && shotData.weaponManager) {
-  const muzzlePos = shotData.weaponManager.getMuzzleWorldPosition();
-  if (muzzlePos) {
-    const dir = shotData.shots[0].direction.clone();
+  // === MUZZLE FLASH (REAL WEAPON POSITION) ===
+  if (shotData.isRanged && shotData.shots.length > 0 && shotData.weaponManager) {
+    const muzzlePos = shotData.weaponManager.getMuzzleWorldPosition();
+    if (muzzlePos) {
+      const dir = shotData.shots[0].direction.clone();
 
-    // Scale riêng cho từng súng
-    let flashScale = 1; // default
-    if (shotData.weapon.id === 'shotgun') flashScale = 2;
-    if (shotData.weapon.id === 'bazooka') flashScale = 4; 
+      // Scale riêng cho từng súng
+      let flashScale = 1; // default
+      if (shotData.weapon.id === 'shotgun') flashScale = 2;
+      if (shotData.weapon.id === 'bazooka') flashScale = 4;
 
-    spawnMuzzleFlash(muzzlePos, dir, flashScale);
+      spawnMuzzleFlash(muzzlePos, dir, flashScale);
+    }
   }
-}
 
 
   if (!shotData) return;
@@ -111,7 +111,7 @@ function createBullet(shot) {
     prev: bulletBody.position.clone(),
     damage: shot.damage,
     range: shot.range,
-    weaponId: shot.weaponId 
+    weaponId: shot.weaponId
   });
 }
 
@@ -332,55 +332,56 @@ export function updateBullets(deltaTime) {
       }
 
       // Check remote players (MULTIPLAYER)
-  // Check remote players (MULTIPLAYER)
-if (networkManager) {
-  const remotePlayers = networkManager.getRemotePlayers();
-  let hitRemotePlayer = false;
+      // Check remote players (MULTIPLAYER)
+      if (networkManager) {
+        const remotePlayers = networkManager.getRemotePlayers();
+        let hitRemotePlayer = false;
 
-  for (const remotePlayer of remotePlayers) {
-    const bulletPos = new THREE.Vector3(curr.x, curr.y, curr.z);
+        for (const remotePlayer of remotePlayers) {
+          const bulletPos = new THREE.Vector3(curr.x, curr.y, curr.z);
 
-    // ===== CAPSULE HITBOX =====
-    const playerBase = remotePlayer.group.position.clone();
-    
-    playerBase.y -= 0.1; // chân
-    const playerHeight = 1.8;
-    const radius = 0.4;
+          // ===== CAPSULE HITBOX =====
+          const playerBase = remotePlayer.group.position.clone();
 
-    const a = playerBase.clone();        // foot
-    const b = playerBase.clone();
-    b.y += playerHeight;                 // head
+          playerBase.y -= 0.1; // chân
+          const playerHeight = 1.8;
+          const radius = 0.4;
 
-    const ab = b.clone().sub(a);
-    const ap = bulletPos.clone().sub(a);
+          const a = playerBase.clone();        // foot
+          const b = playerBase.clone();
+          b.y += playerHeight;                 // head
 
-    const t = Math.max(0, Math.min(1, ap.dot(ab) / ab.lengthSq()));
-    const closest = a.clone().add(ab.multiplyScalar(t));
+          const ab = b.clone().sub(a);
+          const ap = bulletPos.clone().sub(a);
 
-    const dist = closest.distanceTo(bulletPos);
+          const t = Math.max(0, Math.min(1, ap.dot(ab) / ab.lengthSq()));
+          const closest = a.clone().add(ab.multiplyScalar(t));
 
-    if (dist < radius) {
-      console.log(`🎯 Hit remote player ${remotePlayer.id}!`);
+          const dist = closest.distanceTo(bulletPos);
 
-      networkManager.sendHitPlayer(remotePlayer.id, bullet.damage || 10);
-      showHitmarker();
+          if (dist < radius) {
+            console.log(`🎯 Hit remote player ${remotePlayer.id}!`);
 
-      spawnImpactEffect(
-        bulletPos,
-        new THREE.Vector3(0, 1, 0),
-        "enemy"
-      );
+            // Firebase async call (fire and forget)
+            networkManager.sendHitPlayer(remotePlayer.id, bullet.damage || 10);
+            showHitmarker();
 
-      scene.remove(bullet.mesh);
-      world.removeBody(bullet.body);
-      bullets.splice(i, 1);
-      hitRemotePlayer = true;
-      break;
-    }
-  }
+            spawnImpactEffect(
+              bulletPos,
+              new THREE.Vector3(0, 1, 0),
+              "enemy"
+            );
 
-  if (hitRemotePlayer) continue;
-}
+            scene.remove(bullet.mesh);
+            world.removeBody(bullet.body);
+            bullets.splice(i, 1);
+            hitRemotePlayer = true;
+            break;
+          }
+        }
+
+        if (hitRemotePlayer) continue;
+      }
 
     }
 

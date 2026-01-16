@@ -8,7 +8,7 @@ import { scene, camera, renderer } from './scene.js';
 import { world } from './physics.js';
 import { createPlayerBody, updateHealthUI } from './player.js';
 import { PointerLockControlsCannon } from './controls.js';
-import { FIXED_TIME_STEP, MAX_SUB_STEPS } from './constants.js';
+import { FIXED_TIME_STEP, MAX_SUB_STEPS, SERVER_URL } from './constants.js';
 import { processShot, updateBullets } from './shooting.js';
 import { initObstacles } from './obstacles.js';
 import { updateEnemy } from './enemy.js';
@@ -106,7 +106,15 @@ weaponUI.updateWeaponInfo(weaponManager.getWeaponInfo());
 // ===========================
 // MULTIPLAYER CONNECTION
 // ===========================
-networkManager.connect('http://localhost:3001');
+// Initialize Firebase and connect to multiplayer (now async)
+(async () => {
+    try {
+        await networkManager.connect(SERVER_URL);
+        console.log('✅ Multiplayer initialized');
+    } catch (error) {
+        console.error('❌ Failed to initialize multiplayer:', error);
+    }
+})();
 
 // Sync weapon changes to network
 weaponManager.onWeaponSwitch = (weapon, ammoState) => {
@@ -232,12 +240,12 @@ function animate() {
 
     // Render scene
     // Render main view
-renderer.setViewport(0, 0, window.innerWidth, window.innerHeight);
-renderer.setScissorTest(false);
-renderer.render(scene, camera);
+    renderer.setViewport(0, 0, window.innerWidth, window.innerHeight);
+    renderer.setScissorTest(false);
+    renderer.render(scene, camera);
 
-// Render minimap
-renderMinimap();
+    // Render minimap
+    renderMinimap();
 
 }
 

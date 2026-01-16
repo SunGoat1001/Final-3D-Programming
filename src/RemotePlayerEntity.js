@@ -23,22 +23,17 @@ export class RemotePlayer {
         
         // Weapon mesh
         this.weaponMesh = null;
-        // ADD THIS
-this.weaponHolder = new THREE.Group();
-this.weaponHolder.name = "WeaponHolder";
-this.group.add(this.weaponHolder);
+        
         // Name tag and health bar
         this.nameTag = null;
         this.healthBar = null;
         
         // Position interpolation
-  this.targetPosition = new THREE.Vector3(
-    data.position?.x || 0,
-    data.position?.y || 0,
-    data.position?.z || 0
-);
-
-
+        this.targetPosition = new THREE.Vector3(
+            data.position?.x || 0,
+            data.position?.y || 2,
+            data.position?.z || 0
+        );
         this.targetRotation = data.bodyRotation || 0;
         
         // Initialize
@@ -46,8 +41,6 @@ this.group.add(this.weaponHolder);
         this.createNameTag();
         this.createHealthBar();
         this.loadCharacterModel();
-
-
         this.loadWeapon(this.currentWeapon);
         
         // Set initial position
@@ -70,41 +63,7 @@ this.group.add(this.weaponHolder);
         this.placeholder.receiveShadow = true;
         this.group.add(this.placeholder);
     }
-    attachWeaponHolderToHand() {
-    if (!this.model || !this.weaponHolder) return;
-
-    let rightHand = null;
-
-    this.model.traverse((o) => {
-        if (o.isBone) {
-            const n = o.name.toLowerCase();
-            if (n.includes("right") && (n.includes("hand") || n.includes("wrist"))) {
-                rightHand = o;
-            }
-        }
-    });
-
-    if (!rightHand) {
-        console.warn("❌ Không tìm thấy RightHand bone");
-        this.model.add(this.weaponHolder);
-        this.weaponHolder.position.set(0.2, 1.2, 0.3);
-        return;
-    }
-
-    rightHand.add(this.weaponHolder);
-
-    // ⚠️ TUNING CHỖ NÀY
-    this.weaponHolder.position.set(0.02, -0.02, 0.05);
-    this.weaponHolder.rotation.set(
-        -Math.PI / 2,
-        0,
-        Math.PI
-    );
-
-    console.log("✅ Weapon holder attached to RightHand bone");
-}
-
-
+    
     createNameTag() {
         const canvas = document.createElement('canvas');
         const context = canvas.getContext('2d');
@@ -181,21 +140,14 @@ this.group.add(this.weaponHolder);
         try {
             // Use character name from player data (set by server based on team)
             // Blue team = messi_character, Red team = ronaldo_character
-            let name = this.characterName;
-if (name === 'messi') name = 'messi_character';
-if (name === 'ronaldo') name = 'ronaldo_character';
-
-const modelPath = `models/${name}.glb`;
+            const modelPath = `/models/${this.characterName}.glb`;
             console.log(`Loading character model: ${modelPath} for team ${this.team}`);
             
             const gltf = await loader.loadAsync(modelPath);
             
-           this.weaponHolder.clear();
-this.weaponHolder.add(this.weaponMesh);
-
-this.weaponMesh.position.set(0, 0, 0);
-this.weaponMesh.rotation.set(0, 0, 0);
-
+            if (this.model) {
+                this.group.remove(this.model);
+            }
             
             this.model = gltf.scene;
             
@@ -214,14 +166,7 @@ this.weaponMesh.rotation.set(0, 0, 0);
             }
             
             // Position model
-this.model.updateMatrixWorld(true);
-
-const bbox = new THREE.Box3().setFromObject(this.model);
-const minY = bbox.min.y;
-
-this.model.position.y += -minY;
-
-
+            this.model.position.y = 0;
             
             // Setup animations
             if (gltf.animations && gltf.animations.length > 0) {
@@ -253,20 +198,12 @@ this.model.position.y += -minY;
             
             this.group.add(this.model);
             
-            this.attachWeaponHolderToHand();
-
-            
             // Remove placeholder ONLY if model loaded successfully
             if (this.placeholder) {
                 this.group.remove(this.placeholder);
                 this.placeholder = null;
             }
-            // Re-attach current weapon after model loaded
-if (this.weaponMesh && this.weaponHolder) {
-    this.weaponHolder.clear();
-    this.weaponHolder.add(this.weaponMesh);
-}
-
+            
             console.log(`✅ Loaded model ${this.characterName} for remote player ${this.id}`);
         } catch (error) {
             console.error(`❌ Failed to load character model ${this.characterName}:`, error);
@@ -294,7 +231,7 @@ if (this.weaponMesh && this.weaponHolder) {
                 this.weaponMesh = null;
             }
             
-            const gltf = await loader.loadAsync(`models/${modelName}.glb`);
+            const gltf = await loader.loadAsync(`/models/${modelName}.glb`);
             this.weaponMesh = gltf.scene;
             
             // Scale weapon appropriately (IMPORTANT: consistent size)
@@ -362,12 +299,11 @@ if (this.weaponMesh && this.weaponHolder) {
     update(data) {
         // Update target position
         if (data.position) {
-           this.targetPosition.set(
-    data.position.x,
-    0,
-    data.position.z
-);
-
+            this.targetPosition.set(
+                data.position.x,
+                data.position.y,
+                data.position.z
+            );
         }
         
         // Update target rotation

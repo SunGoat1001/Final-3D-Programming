@@ -2,6 +2,8 @@ import { io } from 'socket.io-client';
 import { RemotePlayerManager } from './RemotePlayerManager.js';
 import { takeDamage, respawn } from './player.js';
 import { killFeed } from './ui/killFeedInstance.js';
+import { killStreakUI } from "./ui/killStreakInstance.js";
+
 class NetworkManager {
     constructor() {
         this.socket = null;
@@ -120,10 +122,14 @@ class NetworkManager {
 
         this.socket.on('playerDied', (data) => {
             console.log(`☠️ You were killed by ${data.killerId}`);
+            killStreakUI.reset();
         });
 
         this.socket.on('playerKilled', (data) => {
             console.log(`🎯 You killed ${data.victimId}`);
+
+            killStreakUI.onKill(); 
+
             if (this.onPlayerKilled) {
                 this.onPlayerKilled(data);
             }

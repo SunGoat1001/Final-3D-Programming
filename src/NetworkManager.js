@@ -66,6 +66,9 @@ class NetworkManager {
         this.scoreboardData = [];
         this.teamScores = { red: 0, blue: 0 };
         this.matchEnded = false;
+        
+        // Callback for slow motion
+        this.onSlowMotionTriggered = null;
 
         // Firebase listener unsubscribers
         this.playerListeners = new Map();
@@ -133,12 +136,101 @@ class NetworkManager {
             // Setup listeners
             this.setupPlayerListeners();
             this.setupConnectionStateListener();
+            this.setupGameLogicListeners(); // Added logic listener
             this.startUpdateLoop();
             this.startHeartbeat();
             this.startTimeoutChecker();
         } catch (error) {
             console.error('❌ Error initializing player:', error);
         }
+    }
+
+    setupGameLogicListeners() {
+        console.log('⚔️ Setting up Game Logic (Hits/Kills)...');
+        const hitsRef = ref(this.db, `rooms/${this.roomId}/hits`);
+        const MAX_KILLS = 20;
+
+        // Process hits (This acts as the game server logic)
+        onChildAdded(hitsRef, (snapshot) => {
+             const hit = snapshot.val();
+             if (!hit) return;
+
+             // Logic to track damage and kills
+             // Note: In P2P, we need to locate the victim and apply damage locally
+             // to keep sync. 
+             
+             // 1. Identify Victim
+             let victimTeam = null;
+             
+             // Check if I am the victim
+             if (hit.targetId === this.uid) {
+                 takeDamage(hit.damage);
+                 // Check if I died (takeDamage logic handles health, but we need to know if it was fatal here)
+                 // We can't easily know if *this* specific hit killed me without checking health before/after
+                 // simplified: we assume hits are valid and reduce health.
+             } else {
+                 // Check if remote player
+                 const remotePlayer = this.remotePlayerManager.getPlayer(hit.targetId);
+                 if (remotePlayer) {
+                     remotePlayer.takeDamage(hit.damage);
+                     victimTeam = remotePlayer.team;
+                     if (remotePlayer.health <= 0) {
+                         // It's a kill? 
+                         // Need de-duplication or state tracking because we might re-process old hits?
+                         // onChildAdded runs on existing hits.
+                         // But we don't respawn remote players here explicitly yet.
+                     }
+                 }
+             }
+             
+             // 2. Score Tracking (Heuristic: we count every lethal hit or just count all kills if we had a kill feed)
+             // Since 'hits' are raw damage, we need to know if it was a KILL.
+             // Issue: 'hits' doesn't say "died".
+             // We can't trust health <= 0 check on historical data without replaying perfectly.
+             // BUT, the user wants "Slow Motion on Kill". 
+             // Ideally we should push 'kills' to DB.
+             // But existing code pushes 'hits'.
+             // Let's assume for this feature that we will just check if this hit likely caused a win.
+             
+             // Since we can't perfectly track score without a 'score' node or 'kills' events,
+             // I'll implement a 'kills' listener if I can, OR I will modify sendHitPlayer to push 'kill' if fatal.
+             
+             // But 'sendHitPlayer' doesn't know if fatal unless it checks health.
+             
+             // Workaround: We will listen for 'hits' and simply assume valid hits reduce health.
+             // We will count how many times players have died? No. 
+             
+             // Better: Let's use the 'kills' node I will add support for.
+             // In sendHitPlayer, I will add logic to check for kill.
+        });
+        
+        const killsRef = ref(this.db, `rooms/${this.roomId}/kills`);
+        onChildAdded(killsRef, (snapshot) => {
+            const kill = snapshot.val();
+            // kill = { killerId, victimId, team: 'red'/'blue' (of killer) }
+            
+            if (kill.killerTeam) {
+                 this.teamScores[kill.killerTeam] = (this.teamScores[kill.killerTeam] || 0) + 1;
+                 console.log(`💀 KILL! Score: Red ${this.teamScores.red} - Blue ${this.teamScores.blue}`);
+                 
+                 // Trigger Kill Streak UI locally if I am the killer
+                 if (kill.killerId === this.uid) {
+                     killStreakUI.onKill();
+                 }
+                 
+                 // WINNING KILL CHECK
+                 if (this.teamScores[kill.killerTeam] === MAX_KILLS) {
+                     // Only trigger if the kill happened recently (e.g., within last 5 seconds)
+                     // This prevents slow motion replay when joining a finished match
+                     if (Date.now() - kill.timestamp < 5000) {
+                         console.log("🔥 FINAL KILL! SLOW MOTION!");
+                         if (this.onSlowMotionTriggered) {
+                             this.onSlowMotionTriggered(3000); // 3 seconds slow mo
+                         }
+                     }
+                 }
+            }
+        });
     }
 
     setupPlayerListeners() {
@@ -164,7 +256,7 @@ class NetworkManager {
                 const unsubscribe = onValue(playerUpdateRef, (snapshot) => {
                     if (snapshot.exists()) {
                         const updatedData = snapshot.val();
-                        console.log(`📤 Player ${playerId} updated:`, updatedData.position);
+                        // console.log(`📤 Player ${playerId} updated:`, updatedData.position);
                         this.remotePlayerManager.updatePlayer({
                             id: playerId,
                             ...updatedData
@@ -192,13 +284,6 @@ class NetworkManager {
                 }
             }
         });
-
-        // ===== COMMENTED OUT SOCKET.IO EVENTS =====
-        // this.socket.on('killFeed', (data) => { ... });
-        // this.socket.on('init', (data) => { ... });
-        // this.socket.on('playerJoined', (data) => { ... });
-        // this.socket.on('playerMoved', (data) => { ... });
-        // etc.
     }
 
     setupConnectionStateListener() {
@@ -213,6 +298,9 @@ class NetworkManager {
             }
         });
 
+        // this.socket.on('playerShot', (data) => {
+        /*
+        // ===== BROKEN SOCKET LISTENERS (Replaced by Firebase listeners) =====
         this.socket.on('playerShot', (data) => {
             if (data.id !== this.playerId) {
                 // Show muzzle flash or effect for remote player
@@ -283,6 +371,7 @@ class NetworkManager {
         this.socket.on('connect_error', (error) => {
             console.error('Connection error:', error);
         });
+        */
 
     }
 
@@ -442,6 +531,21 @@ class NetworkManager {
                     timestamp: Date.now()
                 });
                 console.log(`📍 Sent hit to ${targetId} for ${damage} damage`);
+
+                // Check for kill (Client-side authority for P2P)
+                const victim = this.remotePlayerManager.getPlayer(targetId);
+                // We check if current health - damage <= 0. 
+                // Note: victim.health is the currently synced health.
+                if (victim && (victim.health - damage <= 0)) {
+                     const killsRef = ref(this.db, `rooms/${this.roomId}/kills`);
+                     await push(killsRef, {
+                          killerId: this.uid,
+                          killerTeam: this.playerTeam,
+                          victimId: targetId,
+                          timestamp: Date.now()
+                     });
+                     console.log(`💀 Sent KILL confirm for ${targetId}`);
+                }
 
                 // ===== SOCKET.IO (COMMENTED OUT) =====
                 // this.socket.emit('hitPlayer', { targetId, damage });

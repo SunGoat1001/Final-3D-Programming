@@ -33,7 +33,22 @@ import { setNetworkManager } from './shooting.js';
 import { getPlayerPosition } from './player.js';
 
 // Setup network manager for shooting
+// Setup network manager for shooting
 setNetworkManager(networkManager);
+
+// Handle Slow Motion Event
+networkManager.onSlowMotionTriggered = (duration) => {
+    console.log("⏯️ SLOW MOTION TRIGGERED!");
+    setTimeScale(0.2); // 5x slow motion
+    
+    // Play sound / effect?
+    
+    setTimeout(() => {
+        setTimeScale(1.0);
+        console.log("▶️ Normal speed resumed");
+        // Here we could trigger the "WIN" screen if it was the final kill
+    }, duration);
+};
 
 // Global camera reference for remote players
 window.camera = camera;
@@ -157,10 +172,15 @@ window.addEventListener('resize', () => {
 // ===========================
 const clock = new THREE.Clock();
 
+export let timeScale = 1.0;
+export function setTimeScale(v) {
+    timeScale = v;
+}
+
 function animate() {
     requestAnimationFrame(animate);
 
-    const deltaTime = clock.getDelta();
+    const deltaTime = clock.getDelta() * timeScale;
     updateMuzzleFlashes(deltaTime)
     // Get move speed multiplier from current weapon
     const weaponInfo = weaponManager.getHighlightInfo ? weaponManager.getHighlightInfo() : weaponManager.getWeaponInfo();

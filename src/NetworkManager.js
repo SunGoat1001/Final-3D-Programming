@@ -91,7 +91,8 @@ class NetworkManager {
             console.log('✅ Firebase Anonymous Auth Successful:', this.uid);
 
             // Generate room ID (use first 8 chars of uid or custom room)
-            this.roomId = 'default-room'; // You can make this dynamic
+            this.roomId = 'room-' + Date.now();
+             // You can make this dynamic
             this.playerId = this.uid;
 
             // Initialize connection
@@ -119,6 +120,9 @@ class NetworkManager {
 
         try {
             await set(playerRef, initialPlayerData);
+            this.joinTime = Date.now();
+            killStreakUI.reset();
+
                         // 🔥 CLEAR KILL HISTORY WHEN JOIN
             const killsRef = ref(this.db, `rooms/${this.roomId}/kills`);
             await remove(killsRef);

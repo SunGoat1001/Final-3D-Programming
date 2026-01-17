@@ -7,18 +7,12 @@ export class LobbyUI {
         this.currentView = 'main'; // main | lobby
         this.roomId = null;
         this.isHost = false;
+        this.roomListUnsubscribe = null;
         
         // Ensure styles are injected
         this.injectStyles();
         this.setupLobbyListeners();
         this.render();
-        
-        // Auto-refresh room list if on main menu
-        setInterval(() => {
-            if (this.currentView === 'main' && this.container) {
-                this.refreshRoomList();
-            }
-        }, 3000);
     }
 
     injectStyles() {
@@ -82,7 +76,8 @@ export class LobbyUI {
             }
 
             .btn-primary {
-                background: linear-gradient(45deg, #4facfe 0%, #00f2fe 100%);
+                background: linear-gradient(45deg, #4facfe 0%, #00f2fe 0%); /* Gradient direction fix */
+                background-size: 200%;
                 color: #fff;
                 box-shadow: 0 4px 15px rgba(0, 242, 254, 0.4);
             }
@@ -226,6 +221,12 @@ export class LobbyUI {
 
         this.container.innerHTML = ''; // Clear
 
+        // Cleanup previous subscription if switching views
+        if (this.roomListUnsubscribe) {
+            this.roomListUnsubscribe();
+            this.roomListUnsubscribe = null;
+        }
+
         if (this.currentView === 'main') {
             this.renderMainMenu();
         } else if (this.currentView === 'lobby') {
@@ -247,7 +248,7 @@ export class LobbyUI {
 
             <h3 style="margin-bottom: 10px; opacity: 0.7;">Available Rooms</h3>
             <div class="room-list" id="room-list">
-                <div style="text-align:center; padding: 20px; opacity: 0.5;">Loading rooms...</div>
+                <div style="text-align:center; padding: 20px; opacity: 0.5;">Connecting to server...</div>
             </div>
         `;
 
@@ -259,53 +260,52 @@ export class LobbyUI {
             if (name.trim()) this.handleCreateRoom(name);
         });
         
-        this.refreshRoomList();
+        // Subscribe to real-time updates
+        this.roomListUnsubscribe = networkManager.subscribeToRoomList((rooms) => {
+             this.updateRoomListUI(rooms);
+        });
     }
 
-    async refreshRoomList() {
+    updateRoomListUI(rooms) {
         const listContainer = document.getElementById('room-list');
-        if (!listContainer) return;
+        // If we are not on the main screen anymore, do nothing
+        if (!listContainer || this.currentView !== 'main') return;
 
-        try {
-            const rooms = await networkManager.getRooms();
-            listContainer.innerHTML = '';
+        listContainer.innerHTML = '';
 
-            if (rooms.length === 0) {
-                listContainer.innerHTML = `<div style="text-align:center; padding: 20px; opacity: 0.5;">No rooms found. Create one!</div>`;
-                return;
-            }
-
-            rooms.forEach(room => {
-                const item = document.createElement('div');
-                item.className = 'room-item';
-                const isPlaying = room.status === 'playing';
-                const statusColor = isPlaying ? '#ff4b2b' : '#00f260'; // Red : Green
-                const joinDisabled = room.playerCount >= 10; // Allow joining even if playing, just check count
-
-                item.innerHTML = `
-                    <div style="display: flex; align-items: center; gap: 10px;">
-                        <strong>${room.name}</strong>
-                        <span style="color: ${statusColor}; font-size: 0.75rem; font-weight: bold; border: 1px solid ${statusColor}; padding: 2px 6px; border-radius: 4px;">
-                            ${room.status.toUpperCase()}
-                        </span>
-                        <span style="opacity: 0.6; font-size: 0.9em;">
-                            (${room.playerCount}/10)
-                        </span>
-                    </div>
-                    <button class="btn btn-secondary btn-sm" ${joinDisabled ? 'disabled' : ''} style="${joinDisabled ? 'opacity: 0.5; cursor: not-allowed;' : ''}">
-                        ${isPlaying ? 'JOIN GAME' : 'JOIN'}
-                    </button>
-                `;
-                
-                item.querySelector('button').addEventListener('click', () => {
-                    this.handleJoinRoom(room.id);
-                });
-
-                listContainer.appendChild(item);
-            });
-        } catch (e) {
-            console.error("Failed to load rooms", e);
+        if (rooms.length === 0) {
+            listContainer.innerHTML = `<div style="text-align:center; padding: 20px; opacity: 0.5;">No rooms found. Create one!</div>`;
+            return;
         }
+
+        rooms.forEach(room => {
+            const item = document.createElement('div');
+            item.className = 'room-item';
+            const isPlaying = room.status === 'playing';
+            const statusColor = isPlaying ? '#ff4b2b' : '#00f260'; // Red : Green
+            const joinDisabled = room.playerCount >= 10; 
+
+            item.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <strong>${room.name}</strong>
+                    <span style="color: ${statusColor}; font-size: 0.75rem; font-weight: bold; border: 1px solid ${statusColor}; padding: 2px 6px; border-radius: 4px;">
+                        ${room.status.toUpperCase()}
+                    </span>
+                    <span style="opacity: 0.6; font-size: 0.9em;">
+                        (${room.playerCount}/10)
+                    </span>
+                </div>
+                <button class="btn btn-secondary btn-sm" ${joinDisabled ? 'disabled' : ''} style="${joinDisabled ? 'opacity: 0.5; cursor: not-allowed;' : ''}">
+                    ${isPlaying ? 'JOIN GAME' : 'JOIN'}
+                </button>
+            `;
+            
+            item.querySelector('button').addEventListener('click', () => {
+                this.handleJoinRoom(room.id);
+            });
+
+            listContainer.appendChild(item);
+        });
     }
 
     renderLobby() {
@@ -448,9 +448,16 @@ export class LobbyUI {
 
     async handleJoinRoom(id) {
         try {
-            await networkManager.joinRoom(id);
-            this.currentView = 'lobby';
-            this.render();
+            const status = await networkManager.joinRoom(id);
+            
+            // If game is already playing, the NetworkManager listener will trigger onGameStart
+            // So we should NOT show the lobby "Waiting..." screen.
+            if (status === 'playing') {
+                console.log("Game is in progress, hot-joining...");
+            } else {
+                this.currentView = 'lobby';
+                this.render();
+            }
         } catch (e) {
             alert("Error joining room: " + e.message);
         }

@@ -108,64 +108,83 @@ class NetworkManager {
         
         try {
             const snapshot = await get(roomsRef);
-            const rooms = [];
-            if (snapshot.exists()) {
-                snapshot.forEach((child) => {
-                    const data = child.val();
-                    const now = Date.now();
-                    
-                    // 1. INVALID ROOM CHECK
-                    // If room has no info or name, it's garbage/legacy data. Delete it.
-                    if (!data.info || !data.info.name) {
-                        console.log(`🧹 Cleaning up invalid room: ${child.key}`);
-                        remove(ref(this.db, `rooms/${child.key}`));
-                        return;
-                    }
-
-                    // 2. STALE PLAYER CHECK
-                    // Filter out players who haven't updated in > 10 seconds (Ghosts)
-                    let activePlayers = 0;
-                    if (data.players) {
-                        for (const [pid, pdata] of Object.entries(data.players)) {
-                            // If lastSeen is missing or older than 10s, ignore this player
-                            if (pdata.lastSeen && (now - pdata.lastSeen < 10000)) {
-                                activePlayers++;
-                            } else {
-                                // Optional: We could lazily remove this specific player node here too
-                                // remove(ref(this.db, `rooms/${child.key}/players/${pid}`));
-                            }
-                        }
-                    }
-            // Generate room ID (use first 8 chars of uid or custom room)
-            this.roomId = 'room-' + Date.now();
-             // You can make this dynamic
-            this.playerId = this.uid;
-
-                    // 3. EMPTY ROOM CHECK
-                    // If no ACTIVE players, and room is older than 10s (grace period), delete it.
-                    if (activePlayers === 0) {
-                         const createdAt = data.info.createdAt || 0;
-                         if (now - createdAt > 10000) {
-                             console.log(`🧹 Cleaning up empty/stale room: ${data.info.name}`);
-                             remove(ref(this.db, `rooms/${child.key}`));
-                         }
-                         return; // Do not add to list
-                    }
-
-                    rooms.push({
-                        id: child.key,
-                        name: data.info.name,
-                        playerCount: activePlayers,
-                        status: data.info.status || 'waiting',
-                        hostId: data.info.hostId
-                    });
-                });
-            }
-            return rooms;
+            return this._processRoomsSnapshot(snapshot);
         } catch (error) {
             console.error("Error getting rooms:", error);
             return [];
         }
+    }
+
+    subscribeToRoomList(callback) {
+        if (!this.db && !this.completedInit) {
+             // If not initialized, try to init, but this serves async issues.
+             // Assume caller calls initialize() or getRooms() once before.
+             // Or just call initialize here if needed, but it's async.
+             this.initialize().then(() => {
+                 this._setupRoomListListener(callback);
+             });
+             return () => {}; // return empty unsub first
+        }
+        return this._setupRoomListListener(callback);
+    }
+
+    _setupRoomListListener(callback) {
+        const roomsRef = ref(this.db, 'rooms');
+        const unsubscribe = onValue(roomsRef, (snapshot) => {
+            const rooms = this._processRoomsSnapshot(snapshot);
+            callback(rooms);
+        });
+        return unsubscribe;
+    }
+
+    _processRoomsSnapshot(snapshot) {
+        const rooms = [];
+        if (snapshot.exists()) {
+            snapshot.forEach((child) => {
+                const data = child.val();
+                const now = Date.now();
+                
+                // 1. INVALID ROOM CHECK
+                if (!data.info || !data.info.name) {
+                    // console.log(`🧹 Cleaning up invalid room: ${child.key}`);
+                    // Avoid side-effects (deletes) in read-only/listener loop if possible
+                    // or keep it but be careful.
+                    // For now, let's just filter it out. 
+                    // To actually clean it, we should do it separately or here is fine.
+                    // remove(ref(this.db, `rooms/${child.key}`)); 
+                    return;
+                }
+
+                // 2. STALE PLAYER CHECK
+                let activePlayers = 0;
+                if (data.players) {
+                    for (const [pid, pdata] of Object.entries(data.players)) {
+                        if (pdata.lastSeen && (now - pdata.lastSeen < 15000)) { // Increased timeout tolerance
+                            activePlayers++;
+                        }
+                    }
+                }
+
+                // 3. EMPTY ROOM CHECK
+                if (activePlayers === 0) {
+                     const createdAt = data.info.createdAt || 0;
+                     if (now - createdAt > 15000) {
+                         // Stale room
+                         // remove(ref(this.db, `rooms/${child.key}`));
+                     }
+                     return; 
+                }
+
+                rooms.push({
+                    id: child.key,
+                    name: data.info.name,
+                    playerCount: activePlayers,
+                    status: data.info.status || 'waiting',
+                    hostId: data.info.hostId
+                });
+            });
+        }
+        return rooms;
     }
 
     async createRoom(roomName) {
@@ -190,25 +209,31 @@ class NetworkManager {
 
     async joinRoom(roomId, team = 'auto') {
         if (!this.db) await this.initialize();
-        this.roomId = roomId;
+        // Verify initialize() calls if needed, but getRooms calls it.
+        // Actually initialize() is guarded.
 
         this.roomId = roomId;
 
-        // Fetch Room Name
+        // Fetch Room Info (Name & Status)
+        let status = 'waiting';
         try {
-            const nameSnapshot = await get(ref(this.db, `rooms/${this.roomId}/info/name`));
-            if (nameSnapshot.exists()) {
-                this.roomName = nameSnapshot.val();
+            const infoSnapshot = await get(ref(this.db, `rooms/${this.roomId}/info`));
+            if (infoSnapshot.exists()) {
+                const info = infoSnapshot.val();
+                this.roomName = info.name || "Unknown Room";
+                status = info.status || 'waiting';
             } else {
                 this.roomName = "Unknown Room";
             }
         } catch (e) {
-            console.warn("Could not fetch room name", e);
+            console.warn("Could not fetch room info", e);
             this.roomName = "Room";
         }
 
-        console.log('🎮 Joining room:', this.roomName, `(${this.roomId})`);
+        console.log('🎮 Joining room:', this.roomName, `(${this.roomId})`, `Status: ${status}`);
         await this.initializeConnection(team);
+        
+        return status;
     }
 
     async setTeam(team) {

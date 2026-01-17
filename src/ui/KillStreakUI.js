@@ -2,6 +2,7 @@ export class KillStreakUI {
     constructor() {
         this.killCount = 0;
         this.lastKillTime = 0;
+        this.reset();
 
         this.streaks = {
             1: { text: "FIRST BLOOD", sound: "sounds/killstreak/FirstKill.mp3", icon: "textures/killstreak/firstblood.webp" },

@@ -109,6 +109,22 @@ export class WeaponManager {
     }
 
     /**
+     * Set visibility of the weapon model and character
+     * @param {boolean} visible 
+     */
+    setVisible(visible) {
+        // Toggle weapon mesh
+        if (this.weaponMeshes[this.currentWeaponId]) {
+            this.weaponMeshes[this.currentWeaponId].visible = visible;
+        }
+        
+        // Toggle character model
+        if (this.playerModel) {
+            this.playerModel.visible = visible;
+        }
+    }
+
+    /**
      * Initialize ammo state for all weapons
      */
     _initializeAmmoState() {
@@ -263,6 +279,9 @@ export class WeaponManager {
             this.playerModel.traverse((child) => {
                 if (child.isMesh) {
                     child.castShadow = true;
+                    // Disable frustum culling so arms don't disappear when looking up
+                    // (The body root might be out of view, but arms are IK'd into view)
+                    child.frustumCulled = false;
                 }
                 // Find Right Arm chain
                 if (child.isBone) {

@@ -4,7 +4,7 @@
 // ===========================
 
 import { initializeApp } from 'firebase/app';
-import { getDatabase, ref, set, update, push, onValue, onChildAdded, onChildRemoved, onChildChanged, remove, onDisconnect } from 'firebase/database';
+import { getDatabase, ref, set, get, update, push, onValue, onChildAdded, onChildRemoved, onChildChanged, remove, onDisconnect } from 'firebase/database';
 import { getAuth, signInAnonymously } from 'firebase/auth';
 import { RemotePlayerManager } from './RemotePlayerManager.js';
 import { takeDamage, respawn } from './player.js';
@@ -37,6 +37,8 @@ class NetworkManager {
         this.db = null;
         this.uid = null;
         this.roomId = null;
+        this.roomName = null; // Store room name
+        this.isHost = false; // Track if local player is host
 
         this.connected = false;
         this.playerId = null;
@@ -63,6 +65,9 @@ class NetworkManager {
 
         this.onPlayerKilled = null;
         this.onTookDamage = null;
+        this.onGameStart = null; // Callback when game starts
+        this.onRoomUpdate = null; // Callback when room info changes (players/teams)
+        
         this.scoreboardData = [];
         this.teamScores = { red: 0, blue: 0 };
         this.matchEnded = false;
@@ -73,14 +78,14 @@ class NetworkManager {
         // Firebase listener unsubscribers
         this.playerListeners = new Map();
         this.connectionListener = null;
+        this.roomStateListener = null;
         this.timeoutCheckerInterval = null;
     }
 
-    async connect(serverUrl = SERVER_URL) {
+    // Initialize Firebase Auth only
+    async initialize() {
         console.log('🔥 Initializing Firebase...');
-
         try {
-            // Initialize Firebase
             this.app = initializeApp(firebaseConfig);
             this.auth = getAuth(this.app);
             this.db = getDatabase(this.app);
@@ -88,30 +93,195 @@ class NetworkManager {
             // Sign in anonymously
             const userCredential = await signInAnonymously(this.auth);
             this.uid = userCredential.user.uid;
+            this.playerId = this.uid;
             console.log('✅ Firebase Anonymous Auth Successful:', this.uid);
+            return true;
+        } catch (error) {
+            console.error('❌ Firebase Init Error:', error);
+            return false;
+        }
+    }
 
+    async getRooms() {
+        if (!this.db) await this.initialize();
+        const roomsRef = ref(this.db, 'rooms');
+        
+        try {
+            const snapshot = await get(roomsRef);
+            const rooms = [];
+            if (snapshot.exists()) {
+                snapshot.forEach((child) => {
+                    const data = child.val();
+                    const now = Date.now();
+                    
+                    // 1. INVALID ROOM CHECK
+                    // If room has no info or name, it's garbage/legacy data. Delete it.
+                    if (!data.info || !data.info.name) {
+                        console.log(`🧹 Cleaning up invalid room: ${child.key}`);
+                        remove(ref(this.db, `rooms/${child.key}`));
+                        return;
+                    }
+
+                    // 2. STALE PLAYER CHECK
+                    // Filter out players who haven't updated in > 10 seconds (Ghosts)
+                    let activePlayers = 0;
+                    if (data.players) {
+                        for (const [pid, pdata] of Object.entries(data.players)) {
+                            // If lastSeen is missing or older than 10s, ignore this player
+                            if (pdata.lastSeen && (now - pdata.lastSeen < 10000)) {
+                                activePlayers++;
+                            } else {
+                                // Optional: We could lazily remove this specific player node here too
+                                // remove(ref(this.db, `rooms/${child.key}/players/${pid}`));
+                            }
+                        }
+                    }
             // Generate room ID (use first 8 chars of uid or custom room)
             this.roomId = 'room-' + Date.now();
              // You can make this dynamic
             this.playerId = this.uid;
 
-            // Initialize connection
-            this.initializeConnection();
+                    // 3. EMPTY ROOM CHECK
+                    // If no ACTIVE players, and room is older than 10s (grace period), delete it.
+                    if (activePlayers === 0) {
+                         const createdAt = data.info.createdAt || 0;
+                         if (now - createdAt > 10000) {
+                             console.log(`🧹 Cleaning up empty/stale room: ${data.info.name}`);
+                             remove(ref(this.db, `rooms/${child.key}`));
+                         }
+                         return; // Do not add to list
+                    }
+
+                    rooms.push({
+                        id: child.key,
+                        name: data.info.name,
+                        playerCount: activePlayers,
+                        status: data.info.status || 'waiting',
+                        hostId: data.info.hostId
+                    });
+                });
+            }
+            return rooms;
         } catch (error) {
-            console.error('❌ Firebase Connection Error:', error);
+            console.error("Error getting rooms:", error);
+            return [];
         }
     }
 
-    async initializeConnection() {
-        console.log('🎮 Joining room:', this.roomId);
+    async createRoom(roomName) {
+        if (!this.db) await this.initialize();
+        
+        const newRoomRef = push(ref(this.db, 'rooms'));
+        this.roomId = newRoomRef.key;
+        this.roomName = roomName;
+        this.isHost = true;
 
+        const roomInfo = {
+            name: roomName,
+            hostId: this.uid,
+            status: 'waiting', // waiting | playing
+            createdAt: Date.now()
+        };
+
+        await set(ref(this.db, `rooms/${this.roomId}/info`), roomInfo);
+        await this.joinRoom(this.roomId, 'red'); // Host defaults to Red? or let them choose
+        return this.roomId;
+    }
+
+    async joinRoom(roomId, team = 'auto') {
+        if (!this.db) await this.initialize();
+        this.roomId = roomId;
+
+        this.roomId = roomId;
+
+        // Fetch Room Name
+        try {
+            const nameSnapshot = await get(ref(this.db, `rooms/${this.roomId}/info/name`));
+            if (nameSnapshot.exists()) {
+                this.roomName = nameSnapshot.val();
+            } else {
+                this.roomName = "Unknown Room";
+            }
+        } catch (e) {
+            console.warn("Could not fetch room name", e);
+            this.roomName = "Room";
+        }
+
+        console.log('🎮 Joining room:', this.roomName, `(${this.roomId})`);
+        await this.initializeConnection(team);
+    }
+
+    async setTeam(team) {
+        if (!this.connected) {
+            console.warn("⚠️ Cannot set team, not connected yet.");
+            return;
+        }
+        
+        // Disable spamming
+        if (this.playerTeam === team) return;
+
+        console.log(`Swapping to team ${team}...`);
+        
+        // Update local
+        this.playerTeam = team;
+        this.localPlayerData.characterName = team === 'blue' ? 'messi' : 'ronaldo'; 
+        
         const playerRef = ref(this.db, `rooms/${this.roomId}/players/${this.uid}`);
+        await update(playerRef, {
+            team: team,
+            characterName: this.localPlayerData.characterName
+        });
+        
+        // Force UI update locally just in case listener lags
+        if (this.onRoomUpdate) this.onRoomUpdate();
+    }
+
+    async setStartGame() {
+        if (!this.roomId) return;
+        console.log("🚀 Host starting game...");
+        await update(ref(this.db, `rooms/${this.roomId}/info`), {
+            status: 'playing'
+        });
+    }
+
+    async initializeConnection(selectedTeam = 'auto') {
+        const playerRef = ref(this.db, `rooms/${this.roomId}/players/${this.uid}`);
+        
+        // Determine team if auto (Smart Balancing)
+        let team = selectedTeam;
+        if (team === 'auto') {
+             try {
+                 const roomPlayersRef = ref(this.db, `rooms/${this.roomId}/players`);
+                 const snapshot = await get(roomPlayersRef);
+                 let redCount = 0;
+                 let blueCount = 0;
+                 
+                 if (snapshot.exists()) {
+                     snapshot.forEach(child => {
+                         const p = child.val();
+                         if (child.key !== this.uid) { // Don't count self if already there (reconnect case)
+                             if (p.team === 'red') redCount++;
+                             else if (p.team === 'blue') blueCount++;
+                         }
+                     });
+                 }
+                 
+                 if (redCount < blueCount) team = 'red';
+                 else if (blueCount < redCount) team = 'blue';
+                 else team = Math.random() > 0.5 ? 'red' : 'blue';
+                 
+                 console.log(`⚖️ Auto-balancing to team: ${team} (Red: ${redCount}, Blue: ${blueCount})`);
+             } catch (e) {
+                 console.warn("Auto-balance failed, using random", e);
+                 team = Math.random() > 0.5 ? 'red' : 'blue';
+             }
+        }
 
         // Initialize player data in Firebase
         const initialPlayerData = {
             ...this.localPlayerData,
             uid: this.uid,
-            team: Math.random() > 0.5 ? 'red' : 'blue',
+            team: team,
             health: 100,
             lastSeen: Date.now()
         };
@@ -145,6 +315,9 @@ class NetworkManager {
             }
 
             this.connected = true;
+            
+            // Trigger UI update now that we are connected
+            if (this.onRoomUpdate) this.onRoomUpdate();
             this.showTeamNotification(this.playerTeam);
             killStreakUI.reset();
 
@@ -152,12 +325,25 @@ class NetworkManager {
             this.setupPlayerListeners();
             this.setupConnectionStateListener();
             this.setupGameLogicListeners(); // Added logic listener
+            this.setupRoomStateListener(); // New listener for game start
+            
             this.startUpdateLoop();
             this.startHeartbeat();
             this.startTimeoutChecker();
         } catch (error) {
             console.error('❌ Error initializing player:', error);
         }
+    }
+
+    setupRoomStateListener() {
+         const infoRef = ref(this.db, `rooms/${this.roomId}/info`);
+         this.roomStateListener = onValue(infoRef, (snapshot) => {
+              const info = snapshot.val();
+              if (info && info.status === 'playing') {
+                  if (this.onGameStart) this.onGameStart();
+              }
+              // Could also emit room info updates (player counts) here
+         });
     }
 
     setupGameLogicListeners() {
@@ -285,10 +471,16 @@ class NetworkManager {
                             id: playerId,
                             ...updatedData
                         });
+                        
+                        // FIX: Trigger UI update when remote player data changes (e.g. team swap)
+                        if (this.onRoomUpdate) this.onRoomUpdate();
                     }
                 }, (error) => {
                     console.error(`❌ Error listening to player ${playerId}:`, error);
                 });
+                // Trigger callback for UI update (Initial add)
+                if (this.onRoomUpdate) this.onRoomUpdate();
+
                 this.playerListeners.set(playerId, unsubscribe);
             }
         });
@@ -306,6 +498,8 @@ class NetworkManager {
                     unsubscribe();
                     this.playerListeners.delete(playerId);
                 }
+                
+                if (this.onRoomUpdate) this.onRoomUpdate();
             }
         });
     }
@@ -605,40 +799,78 @@ class NetworkManager {
         this.remotePlayerManager.update(deltaTime);
     }
 
-    async disconnect() {
-        console.log('🔌 Disconnecting from Firebase...');
+    async leaveRoom() {
+        if (!this.roomId || !this.uid) return;
+
+        console.log("🚪 Leaving room...");
+        
+        try {
+            // 1. Get current room state to decide Host Migration or Deletion
+            const playersRef = ref(this.db, `rooms/${this.roomId}/players`);
+            const snapshot = await get(playersRef);
+            
+            if (snapshot.exists()) {
+                const players = snapshot.val();
+                const playerIds = Object.keys(players).filter(id => id !== this.uid); // Everyone else
+                
+                if (playerIds.length === 0) {
+                     // 1a. No one left -> Delete Room
+                     console.log("🧹 Last player leaving, deleting room...");
+                     await remove(ref(this.db, `rooms/${this.roomId}`));
+                } else if (this.isHost) {
+                     // 1b. I am host, but others remain -> Migrate Host
+                     const newHostId = playerIds[0]; // Pick first available char
+                     console.log(`👑 Migrating host to ${newHostId}`);
+                     await update(ref(this.db, `rooms/${this.roomId}/info`), {
+                         hostId: newHostId
+                     });
+                }
+            }
+
+            // 2. Remove Self
+            // Note: processing this AFTER host migration ensures clean state
+            await remove(ref(this.db, `rooms/${this.roomId}/players/${this.uid}`));
+
+            // 3. Cleanup Local State
+            this.cleanup();
+            
+        } catch (e) {
+            console.error("Error leaving room:", e);
+        }
+    }
+
+    cleanup() {
         this.stopUpdateLoop();
         this.stopHeartbeat();
         this.stopTimeoutChecker();
 
-        try {
-            // ===== FIREBASE CLEANUP =====
-            // Unsubscribe from all listeners
-            this.playerListeners.forEach(unsubscribe => unsubscribe());
-            this.playerListeners.clear();
-
-            // Stop listening to connection state
-            if (this.connectionListener) {
-                this.connectionListener();
-                this.connectionListener = null;
-            }
-
-            // Remove player from Firebase
-            // Note: onDisconnect() already handles this automatically
-            // This is a backup explicit removal
-            if (this.db && this.uid) {
-                const playerRef = ref(this.db, `rooms/${this.roomId}/players/${this.uid}`);
-                await remove(playerRef);
-            }
-
-            this.connected = false;
-            console.log('✅ Disconnected from Firebase');
-
-            // ===== SOCKET.IO (COMMENTED OUT) =====
-            // this.socket.disconnect();
-        } catch (error) {
-            console.error('❌ Error during disconnect:', error);
+        // Unsubscribe listeners
+        this.playerListeners.forEach(unsubscribe => unsubscribe());
+        this.playerListeners.clear();
+        
+        if (this.roomStateListener) {
+            this.roomStateListener(); // Unsub
+            this.roomStateListener = null;
         }
+
+        if (this.connectionListener) {
+            this.connectionListener();
+            this.connectionListener = null;
+        }
+        
+        this.connected = false;
+        this.roomId = null;
+        this.roomName = null;
+        this.isHost = false;
+        this.playerTeam = null;
+        this.remotePlayerManager.clear(); 
+        
+        console.log("✅ Cleaned up local network state.");
+    }
+
+    async disconnect() {
+        console.log('🔌 Disconnecting from Firebase...');
+        await this.leaveRoom();
     }
 }
 

@@ -12,6 +12,11 @@ const deathButton = deathScreen ? deathScreen.querySelector('p') : null;
 
 let playerBody = null;
 let isDead = false;
+let currentSpawnPoint = {...PLAYER_START_POSITION};
+
+export function setSpawnPoint(pos) {
+    currentSpawnPoint = {...pos};
+}
 
 if (deathButton) {
     deathButton.addEventListener('click', (e) => {
@@ -35,9 +40,9 @@ export function createPlayerBody() {
     });
 
     sphereBody.position.set(
-        PLAYER_START_POSITION.x,
-        PLAYER_START_POSITION.y,
-        PLAYER_START_POSITION.z
+        currentSpawnPoint.x,
+        currentSpawnPoint.y,
+        currentSpawnPoint.z
     );
 
     world.addBody(sphereBody);
@@ -90,9 +95,9 @@ export function respawn() {
 
     // Reset position and velocity
     playerBody.position.set(
-        PLAYER_START_POSITION.x,
-        PLAYER_START_POSITION.y,
-        PLAYER_START_POSITION.z
+        currentSpawnPoint.x,
+        currentSpawnPoint.y,
+        currentSpawnPoint.z
     );
     playerBody.velocity.set(0, 0, 0);
     playerBody.angularVelocity.set(0, 0, 0);

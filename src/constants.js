@@ -24,6 +24,8 @@ export const PLAYER_HEIGHT = 1;   // Capsule height
 export const PLAYER_MASS = 40;      // Mass in kg
 export const PLAYER_START_POSITION = { x: 0, y: 5, z: 0 };
 export const START_POSITION = { x: 0, y: 5, z: 0 };
+export const SPAWN_RED = { x: 8, y: 2, z: 14 };
+export const SPAWN_BLUE = { x: -8, y: 2, z: -14 };
 export const MOVE_FORCE_MULTIPLIER = 40;  // Force multiplier for movement
 export const PLAYER_INITIAL_HEALTH = 100; // Player starting health
 

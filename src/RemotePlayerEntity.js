@@ -108,6 +108,14 @@ this.group.add(this.weaponHolder);
 
 
     createNameTag() {
+        // Cleanup old tag if exists
+        if (this.nameTag) {
+            this.group.remove(this.nameTag);
+            if (this.nameTag.material.map) this.nameTag.material.map.dispose();
+            if (this.nameTag.material) this.nameTag.material.dispose();
+            this.nameTag = null;
+        }
+
         const canvas = document.createElement('canvas');
         const context = canvas.getContext('2d');
         canvas.width = 256;
@@ -365,9 +373,14 @@ if (this.weaponMesh && this.weaponHolder) {
         // IMPORTANT: Only update TARGET values, NOT the mesh directly
         // The mesh will be interpolated in updateAnimation() every frame
 
-        // Update lastSeen for presence tracking
         if (data.lastSeen) {
             this.lastSeen = data.lastSeen;
+        }
+
+        // Update Team Sync
+        if (data.team && data.team !== this.team) {
+            this.team = data.team;
+            this.createNameTag(); // Update visual tag
         }
 
         // Update target position (includes Y axis)

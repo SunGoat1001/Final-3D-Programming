@@ -136,6 +136,10 @@ class NetworkManager {
                             }
                         }
                     }
+            // Generate room ID (use first 8 chars of uid or custom room)
+            this.roomId = 'room-' + Date.now();
+             // You can make this dynamic
+            this.playerId = this.uid;
 
                     // 3. EMPTY ROOM CHECK
                     // If no ACTIVE players, and room is older than 10s (grace period), delete it.
@@ -286,6 +290,19 @@ class NetworkManager {
 
         try {
             await set(playerRef, initialPlayerData);
+            this.joinTime = Date.now();
+            killStreakUI.reset();
+
+                        // 🔥 CLEAR KILL HISTORY WHEN JOIN
+            const killsRef = ref(this.db, `rooms/${this.roomId}/kills`);
+            await remove(killsRef);
+
+            // 🔥 MARK JOIN TIME
+            this.joinTime = Date.now();
+
+            // 🔥 RESET LOCAL UI
+            killStreakUI.reset();
+
             console.log('✅ Player initialized in Firebase');
 
             // Register onDisconnect to remove player when connection is lost
@@ -301,6 +318,8 @@ class NetworkManager {
             
             // Trigger UI update now that we are connected
             if (this.onRoomUpdate) this.onRoomUpdate();
+            this.showTeamNotification(this.playerTeam);
+            killStreakUI.reset();
 
             // Setup listeners
             this.setupPlayerListeners();
@@ -386,33 +405,42 @@ class NetworkManager {
              // In sendHitPlayer, I will add logic to check for kill.
         });
         
-        const killsRef = ref(this.db, `rooms/${this.roomId}/kills`);
+            const killsRef = ref(this.db, `rooms/${this.roomId}/kills`);
         onChildAdded(killsRef, (snapshot) => {
-            const kill = snapshot.val();
-            // kill = { killerId, victimId, team: 'red'/'blue' (of killer) }
-            
-            if (kill.killerTeam) {
-                 this.teamScores[kill.killerTeam] = (this.teamScores[kill.killerTeam] || 0) + 1;
-                 console.log(`💀 KILL! Score: Red ${this.teamScores.red} - Blue ${this.teamScores.blue}`);
-                 
-                 // Trigger Kill Streak UI locally if I am the killer
-                 if (kill.killerId === this.uid) {
-                     killStreakUI.onKill();
-                 }
-                 
-                 // WINNING KILL CHECK
-                 if (this.teamScores[kill.killerTeam] === MAX_KILLS) {
-                     // Only trigger if the kill happened recently (e.g., within last 5 seconds)
-                     // This prevents slow motion replay when joining a finished match
-                     if (Date.now() - kill.timestamp < 5000) {
-                         console.log("🔥 FINAL KILL! SLOW MOTION!");
-                         if (this.onSlowMotionTriggered) {
-                             this.onSlowMotionTriggered(3000); // 3 seconds slow mo
-                         }
-                     }
-                 }
+    const kill = snapshot.val();
+    if (!kill) return;
+
+    // ❗ BỎ QUA KILL CŨ
+    if (!kill.timestamp || kill.timestamp < this.joinTime) return;
+
+    // ✅ NẾU MÌNH BỊ GIẾT → RESET STREAK
+    if (kill.victimId === this.uid) {
+        console.log("☠️ You died → reset killstreak");
+        killStreakUI.reset();
+    }
+
+    if (kill.killerTeam) {
+        this.teamScores[kill.killerTeam] = (this.teamScores[kill.killerTeam] || 0) + 1;
+        console.log(`💀 KILL! Score: Red ${this.teamScores.red} - Blue ${this.teamScores.blue}`);
+
+        // ✅ CHỈ cộng streak nếu mình là killer
+        if (kill.killerId === this.uid) {
+            killStreakUI.onKill();
+        }
+
+        // WINNING KILL CHECK
+        if (this.teamScores[kill.killerTeam] === MAX_KILLS) {
+            if (Date.now() - kill.timestamp < 5000) {
+                console.log("🔥 FINAL KILL! SLOW MOTION!");
+                if (this.onSlowMotionTriggered) {
+                    this.onSlowMotionTriggered(3000);
+                }
             }
-        });
+        }
+    }
+});
+
+
     }
 
     setupPlayerListeners() {

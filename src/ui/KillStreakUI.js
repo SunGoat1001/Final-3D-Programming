@@ -4,12 +4,12 @@ export class KillStreakUI {
         this.lastKillTime = 0;
 
         this.streaks = {
-            1: { text: "FIRST BLOOD", sound: "public/sounds/killstreak/FirstKill.mp3", icon: "public/textures/killstreak/firstblood.webp" },
-            2: { text: "DOUBLE KILL", sound: "public/sounds/killstreak/doublekill.ogg", icon: "public/textures/killstreak/doublekill.webp" },
-            3: { text: "TRIPLE KILL", sound: "public/sounds/killstreak/triple.ogg", icon: "public/textures/killstreak/triplekill.webp" },
-            4: { text: "QUADRA KILL", sound: "public/sounds/killstreak/fourkill.ogg", icon: "public/textures/killstreak/quadra.webp" },
-            5: { text: "MEGA KILL", sound: "public/sounds/killstreak/mega.ogg", icon: "public/textures/killstreak/penta.webp" },
-            6: { text: "LEGENDARY", sound: "public/sounds/killstreak/Legendary.ogg", icon: "public/textures/killstreak/legendary.webp" },
+            1: { text: "FIRST BLOOD", sound: "sounds/killstreak/FirstKill.mp3", icon: "textures/killstreak/firstblood.webp" },
+            2: { text: "DOUBLE KILL", sound: "sounds/killstreak/doublekill.ogg", icon: "textures/killstreak/doublekill.webp" },
+            3: { text: "TRIPLE KILL", sound: "sounds/killstreak/triple.ogg", icon: "textures/killstreak/triplekill.webp" },
+            4: { text: "QUADRA KILL", sound: "sounds/killstreak/fourkill.ogg", icon: "textures/killstreak/quadra.webp" },
+            5: { text: "MEGA KILL", sound: "sounds/killstreak/mega.ogg", icon: "textures/killstreak/penta.webp" },
+            6: { text: "LEGENDARY", sound: "sounds/killstreak/Legendary.ogg", icon: "textures/killstreak/legendary.webp" },
         };
 
         this.createUI();

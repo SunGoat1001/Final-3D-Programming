@@ -7,7 +7,7 @@ import { WORLD_SCALE } from './constants.js';
 const obstacles = [];
 
 export function initObstacles() {
-    // Create wall
+    // Create barrier
     createObstacle(-4.3, -0.1, 0, 17, 3, 0.35, 0, THREE.MathUtils.degToRad(90), 0);
     createObstacle(4.3, -0.1, 0, 17, 3, 0.35, 0, THREE.MathUtils.degToRad(90), 0);
     createObstacle(-0.03, 8.3, 0, 8, 3, 0.35);
@@ -15,6 +15,9 @@ export function initObstacles() {
     createObstacle(-0.03, -7.84, 0, 5.4, 3, 0.35);
     createObstacle(3.6, -7.82889, 0, 0.6, 3, 0.35);
     createObstacle(-3.88628, -7.32, 0, 0.35, 3, 1.1);
+    // Create walll
+    createObstacle(3.64092, 5.06983, 0.5, 0.9, 1, 0.1);
+
     // Create cầu thang
     createObstacle(-3.55903, -4.87136, 0, 0.88, 0.5, 0.4);
     createObstacle(-3.74903, -6.0, 0, 0.32, 0.8, 0.2);
@@ -29,7 +32,10 @@ export function initObstacles() {
     createObstacle(-2.15548, 7.08391, 1, 4.5, 0.05, 1.8, 0, 0, THREE.MathUtils.degToRad(180));
     createObstacle(-0.03, -7.12433, 1, 8, 0.05, 1.8, 0, 0, THREE.MathUtils.degToRad(180));
 
-    // Create some box obstacles
+    // bộ thùng hàng
+    createObstacle(-0.76855, 3.08983, 0.78, 1.5, 0.85, 0.05, THREE.MathUtils.degToRad(90));
+    createObstacle(-0.76855, 2.70983, 0.38, 1.5, 0.85, 0.05);
+    createObstacle(-0.76855, 3.48, 0.38, 1.5, 0.85, 0.05);
 
     // 4 cột
     createObstacle(0, 7.9, 0.95, 0.3, 3, 0.3);
@@ -45,7 +51,7 @@ export function initObstacles() {
     createObstacle(-2.35979, 5.91963, 0, 0.4, 0.4, 0.4);
     createObstacle(-1.68548, 6.38039, 1.25, 0.4, 0.4, 0.4);
     createObstacle(-3.78631, 6.38039, 1.25, 0.4, 0.4, 0.4);
-    createObstacle(-1.68548, 7.79391, 1.25, 0.4, 0.4, 0.4);
+    createObstacle(-1.68548, 7.79391, 1.25, 0.35, 0.35, 0.35);
     createObstacle(-1.94513, 1.59899, 0, 0.4, 0.4, 0.4);
     createObstacle(-1.80446, 0.985337, 0, 0.4, 0.4, 0.4);
     createObstacle(-0.192376, 0.997791, 0, 0.4, 0.4, 0.4);
@@ -59,7 +65,7 @@ export function initObstacles() {
     createObstacle(-3.79111, -1.69964, 0, 0.4, 0.4, 0.4);
     createObstacle(-3.34741, -1.69964, 0, 0.4, 0.4, 0.4);
     createObstacle(-3.68065, -1.69964, 0.39786 * 1.5, 0.4, 0.4, 0.4);
-    createObstacle(-2.28915, -5.1603, 0, 0.4, 0.4, 0.4);
+    createObstacle(-2.28915, -5.1603, 0, 0.35, 0.4, 0.35);
     createObstacle(1.69599, -6.34232, 0, 0.4, 0.4, 0.4);
     createObstacle(-0.001986, -5.89387, 0, 0.4, 0.4, 0.4);
     createObstacle(-0.001831, -5.89387, 0.39786 * 1.5, 0.4, 0.4, 0.4);
@@ -104,7 +110,7 @@ export function initObstacles() {
     createObstacle(2.03169, -1.25, 0, 0.5, 0.5, 0.5);
     createObstacle(3.28352, -2.42351, 0, 0.38, 0.38, 0.38);
     createObstacle(0.455356, -5.86903, 0, 0.5, 0.5, 0.5);
-    createObstacle(-2.24637, -4.70349, 0, 0.5, 0.5, 0.5);
+    createObstacle(-2.24637, -4.70349, 0, 0.4, 0.5, 0.4);
 
     // Cái thùng (giống thùng dầu)
     createObstacle(-0.761102, -6.3548, 1.23, 0.2, 0.3, 0.2);
@@ -163,7 +169,9 @@ function createObstacle(x, z, y, width, height, depth, rotateX = 0, rotateY = 0,
 
     // Three.js mesh
     const geometry = new THREE.BoxGeometry(scaledWidth, scaledHeight, scaledDepth);
-    const material = new THREE.MeshStandardMaterial({ color: "blue" });
+    const material = new THREE.MeshStandardMaterial({
+        color: "blue"
+    });
     const mesh = new THREE.Mesh(geometry, material);
     mesh.position.set(scaledX, scaledY, scaledZ);
     mesh.rotation.set(rotateX, rotateY, -rotateZ); // rotations unaffected by scale

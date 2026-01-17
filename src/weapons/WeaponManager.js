@@ -279,6 +279,9 @@ export class WeaponManager {
             this.playerModel.traverse((child) => {
                 if (child.isMesh) {
                     child.castShadow = true;
+                    // Disable frustum culling so arms don't disappear when looking up
+                    // (The body root might be out of view, but arms are IK'd into view)
+                    child.frustumCulled = false;
                 }
                 // Find Right Arm chain
                 if (child.isBone) {

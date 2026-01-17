@@ -1,9 +1,12 @@
 export class KillStreakUI {
     constructor() {
-        this.killCount = 0;
-        this.lastKillTime = 0;
-        this.reset();
+      console.log("🔄 Reset Kill Streak");
+    this.killCount = 0;
+    this.lastKillTime = 0;
 
+    if (this.container) {
+        this.container.style.opacity = "0";
+    }
         this.streaks = {
             1: { text: "FIRST BLOOD", sound: "sounds/killstreak/FirstKill.mp3", icon: "textures/killstreak/firstblood.webp" },
             2: { text: "DOUBLE KILL", sound: "sounds/killstreak/doublekill.ogg", icon: "textures/killstreak/doublekill.webp" },
@@ -55,7 +58,8 @@ export class KillStreakUI {
 
 
     show(count) {
-        const data = this.streaks[count] || this.streaks[6];
+        const safeCount = Math.min(count, 6);
+        const data = this.streaks[safeCount];
         if (!data) return;
 
         // Set content

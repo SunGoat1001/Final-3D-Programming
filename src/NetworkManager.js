@@ -132,6 +132,7 @@ class NetworkManager {
 
             this.connected = true;
             this.showTeamNotification(this.playerTeam);
+            killStreakUI.reset();
 
             // Setup listeners
             this.setupPlayerListeners();
@@ -204,33 +205,36 @@ class NetworkManager {
              // In sendHitPlayer, I will add logic to check for kill.
         });
         
-        const killsRef = ref(this.db, `rooms/${this.roomId}/kills`);
+            const killsRef = ref(this.db, `rooms/${this.roomId}/kills`);
         onChildAdded(killsRef, (snapshot) => {
             const kill = snapshot.val();
-            // kill = { killerId, victimId, team: 'red'/'blue' (of killer) }
-            
+
+            // ❗ BỎ QUA KILL CŨ
+            if (!kill.timestamp || kill.timestamp < this.joinTime) {
+                return;
+            }
+
             if (kill.killerTeam) {
-                 this.teamScores[kill.killerTeam] = (this.teamScores[kill.killerTeam] || 0) + 1;
-                 console.log(`💀 KILL! Score: Red ${this.teamScores.red} - Blue ${this.teamScores.blue}`);
-                 
-                 // Trigger Kill Streak UI locally if I am the killer
-                 if (kill.killerId === this.uid) {
-                     killStreakUI.onKill();
-                 }
-                 
-                 // WINNING KILL CHECK
-                 if (this.teamScores[kill.killerTeam] === MAX_KILLS) {
-                     // Only trigger if the kill happened recently (e.g., within last 5 seconds)
-                     // This prevents slow motion replay when joining a finished match
-                     if (Date.now() - kill.timestamp < 5000) {
-                         console.log("🔥 FINAL KILL! SLOW MOTION!");
-                         if (this.onSlowMotionTriggered) {
-                             this.onSlowMotionTriggered(3000); // 3 seconds slow mo
-                         }
-                     }
-                 }
+                this.teamScores[kill.killerTeam] = (this.teamScores[kill.killerTeam] || 0) + 1;
+                console.log(`💀 KILL! Score: Red ${this.teamScores.red} - Blue ${this.teamScores.blue}`);
+
+                // ✅ CHỈ trigger nếu chính mình là killer
+                if (kill.killerId === this.uid) {
+                    killStreakUI.onKill();
+                }
+
+                // WINNING KILL CHECK
+                if (this.teamScores[kill.killerTeam] === MAX_KILLS) {
+                    if (Date.now() - kill.timestamp < 5000) {
+                        console.log("🔥 FINAL KILL! SLOW MOTION!");
+                        if (this.onSlowMotionTriggered) {
+                            this.onSlowMotionTriggered(3000);
+                        }
+                    }
+                }
             }
         });
+
     }
 
     setupPlayerListeners() {

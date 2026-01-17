@@ -9,7 +9,7 @@ export class KillStreakUI {
             3: { text: "TRIPLE KILL", sound: "public/sounds/killstreak/triple.ogg", icon: "public/textures/killstreak/triplekill.webp" },
             4: { text: "QUADRA KILL", sound: "public/sounds/killstreak/fourkill.ogg", icon: "public/textures/killstreak/quadra.webp" },
             5: { text: "MEGA KILL", sound: "public/sounds/killstreak/mega.ogg", icon: "public/textures/killstreak/penta.webp" },
-            6: { text: "LEGENDARY", sound: "public/sounds/killstreak/Lengendary.ogg", icon: "public/textures/killstreak/legendary.webp" },
+            6: { text: "LEGENDARY", sound: "public/sounds/killstreak/Legendary.ogg", icon: "public/textures/killstreak/legendary.webp" },
         };
 
         this.createUI();

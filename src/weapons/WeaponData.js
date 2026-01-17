@@ -96,8 +96,8 @@ export const WEAPONS = {
         fireRate: 0.9,           // 0.8-1.0s between shots (pump action)
 
         // Ammo
-        maxAmmo: 6,              // 6 shells per magazine
-        reserveAmmo: 24,         // 4 extra loads
+        maxAmmo: 7,              // 6 shells per magazine
+        reserveAmmo: 28,         // 4 extra loads
         lowAmmoThreshold: 2,
         // Reload
         reloadTime: 3.0,         // Longer reload due to single shell loading
@@ -171,8 +171,8 @@ export const WEAPONS = {
         name: 'Bazooka',
         type: WeaponType.RANGED,
 
-        damage: 100,
-        damageMax: 150,
+        damage: 120,
+        damageMax: 160,
 
         // Fire Mode
         fireModes: ['SINGLE'],
@@ -186,7 +186,7 @@ export const WEAPONS = {
 
         reloadTime: 3.5,
 
-        moveSpeedMultiplier: 0.1, // heavy
+        moveSpeedMultiplier: 0.05, // heavy
 
         range: 60,
         pellets: 1,

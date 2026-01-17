@@ -42,6 +42,10 @@ export class PointerLockControlsCannon {
 
         // Aim state
         this.isAiming = false;
+        
+        // Control state
+        this.enabled = false; // Disabled by default until game starts
+
         this.targetFOV = 75;
         this.currentFOV = 75;
 
@@ -104,7 +108,7 @@ export class PointerLockControlsCannon {
 
         // Click to request pointer lock
         document.body.addEventListener('click', () => {
-            if (!this.isLocked()) {
+            if (this.enabled && !this.isLocked()) {
                 document.body.requestPointerLock();
             }
         });
@@ -250,7 +254,7 @@ export class PointerLockControlsCannon {
      * @param {number} deltaTime - Time since last update in seconds
      */
     update(deltaTime) {
-        if (!this.isLocked()) return;
+        if (!this.enabled || !this.isLocked()) return;
 
         // Calculate input velocity based on camera direction (yaw only)
         this.inputVelocity.set(0, 0, 0);

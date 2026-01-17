@@ -6,9 +6,9 @@ import * as THREE from 'three';
 // ===========================
 import { scene, camera, renderer } from './scene.js';
 import { world } from './physics.js';
-import { createPlayerBody, updateHealthUI } from './player.js';
+import { createPlayerBody, updateHealthUI, setSpawnPoint } from './player.js';
 import { PointerLockControlsCannon } from './controls.js';
-import { FIXED_TIME_STEP, MAX_SUB_STEPS, SERVER_URL } from './constants.js';
+import { FIXED_TIME_STEP, MAX_SUB_STEPS, SERVER_URL, SPAWN_RED, SPAWN_BLUE } from './constants.js';
 import { processShot, updateBullets } from './shooting.js';
 import { initObstacles } from './obstacles.js';
 import { updateEnemy } from './enemy.js';
@@ -26,6 +26,7 @@ import { updateMuzzleFlashes } from './muzzleFlash.js';
 import './ui/killFeedInstance.js';
 import { ScoreboardUI } from './ui/ScoreboardUI.js';
 import { renderMinimap } from './minimap.js';
+import { lobbyUI } from './ui/LobbyUI.js';
 
 // Multiplayer
 import { networkManager } from './NetworkManager.js';
@@ -121,15 +122,38 @@ weaponUI.updateWeaponInfo(weaponManager.getWeaponInfo());
 // ===========================
 // MULTIPLAYER CONNECTION
 // ===========================
-// Initialize Firebase and connect to multiplayer (now async)
-(async () => {
-    try {
-        await networkManager.connect(SERVER_URL);
-        console.log('✅ Multiplayer initialized');
-    } catch (error) {
-        console.error('❌ Failed to initialize multiplayer:', error);
+// Connect listener for Game Start
+networkManager.onGameStart = () => {
+    console.log("🚀 GAME STARTED! Enabling controls...");
+    lobbyUI.hide();
+    controls.enabled = true;
+    
+    // Set Spawn Point based on Team
+    const team = networkManager.playerTeam;
+    console.log(`Spawn Team: ${team}`);
+    
+    let spawnPos = { x: 0, y: 5, z: 0 };
+    if (team === 'red') spawnPos = SPAWN_RED;
+    else if (team === 'blue') spawnPos = SPAWN_BLUE;
+    
+    // Update player spawn point for future respawns
+    setSpawnPoint(spawnPos);
+    
+    // Teleport immediately
+    if (sphereBody) {
+        sphereBody.position.set(spawnPos.x, spawnPos.y, spawnPos.z);
+        sphereBody.velocity.set(0, 0, 0);
+        sphereBody.angularVelocity.set(0, 0, 0);
     }
-})();
+    
+    // Set initial pointer lock instruction visibility
+    const instructions = document.getElementById('instructions');
+    if (instructions) instructions.style.display = 'block';
+};
+
+// Controls are disabled by default (see controls.js)
+// LobbyUI starts automatically via import scope
+console.log('✅ Lobby Initialized');
 
 // Sync weapon changes to network
 weaponManager.onWeaponSwitch = (weapon, ammoState) => {
@@ -188,6 +212,33 @@ function animate() {
 
     // Update controls (applies forces to sphere body)
     controls.update(deltaTime);
+
+    // Lobby Camera Animation (Orbit view of map) & UI Toggling
+    if (!controls.enabled) {
+        const time = Date.now() * 0.0001; 
+        const radius = 40;
+        camera.position.set(Math.sin(time) * radius, 30, Math.cos(time) * radius);
+        camera.lookAt(0, 0, 0);
+    }
+    
+    // UI Visibility State Tracking
+    const isGame = controls.enabled;
+    if (networkManager._lastControlsState !== isGame) {
+        networkManager._lastControlsState = isGame;
+        const display = isGame ? 'block' : 'none';
+        
+        // Toggle HUD Elements
+        const uiIds = ['crosshair', 'health-container', 'instructions'];
+        uiIds.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.style.display = display;
+        });
+        
+        // Toggle Weapon
+        if (weaponManager && weaponManager.setVisible) {
+            weaponManager.setVisible(isGame);
+        }
+    }
     // Update crosshair dynamic
     updateCrosshair(deltaTime);
     // Update weapon manager (handles reload, weapon position)
@@ -264,8 +315,10 @@ function animate() {
     renderer.setScissorTest(false);
     renderer.render(scene, camera);
 
-    // Render minimap
-    renderMinimap();
+    // Render minimap ONLY IN GAME
+    if (controls.enabled) {
+        renderMinimap();
+    }
 
 }
 

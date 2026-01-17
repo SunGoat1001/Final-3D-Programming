@@ -406,32 +406,59 @@ class NetworkManager {
         });
         
             const killsRef = ref(this.db, `rooms/${this.roomId}/kills`);
-        onChildAdded(killsRef, (snapshot) => {
+onChildAdded(killsRef, (snapshot) => {
     const kill = snapshot.val();
     if (!kill) return;
 
     // ❗ BỎ QUA KILL CŨ
     if (!kill.timestamp || kill.timestamp < this.joinTime) return;
 
-    // ✅ NẾU MÌNH BỊ GIẾT → RESET STREAK
+    console.log("🩸 KILL EVENT:", kill);
+
+    // =========================
+    // 🔥 HIỆN KILLFEED
+    // =========================
+
+    const killerName =
+        kill.killerId === this.uid
+            ? "YOU"
+            : this.remotePlayerManager.getPlayer(kill.killerId)?.characterName || "ENEMY";
+
+    const victimName =
+        kill.victimId === this.uid
+            ? "YOU"
+            : this.remotePlayerManager.getPlayer(kill.victimId)?.characterName || "ENEMY";
+
+    // Lấy weapon hiện tại của killer (nếu có)
+    const killerPlayer = this.remotePlayerManager.getPlayer(kill.killerId);
+    const weaponId = killerPlayer?.currentWeapon || "default";
+
+    // ✅ GỌI KILLFEED UI
+    killFeed.addKill(killerName, victimName, weaponId);
+
+    // =========================
+    // RESET STREAK NẾU MÌNH CHẾT
+    // =========================
     if (kill.victimId === this.uid) {
         console.log("☠️ You died → reset killstreak");
         killStreakUI.reset();
     }
 
+    // =========================
+    // SCORE + STREAK
+    // =========================
     if (kill.killerTeam) {
-        this.teamScores[kill.killerTeam] = (this.teamScores[kill.killerTeam] || 0) + 1;
-        console.log(`💀 KILL! Score: Red ${this.teamScores.red} - Blue ${this.teamScores.blue}`);
+        this.teamScores[kill.killerTeam] =
+            (this.teamScores[kill.killerTeam] || 0) + 1;
 
         // ✅ CHỈ cộng streak nếu mình là killer
         if (kill.killerId === this.uid) {
             killStreakUI.onKill();
         }
 
-        // WINNING KILL CHECK
-        if (this.teamScores[kill.killerTeam] === MAX_KILLS) {
+        // WIN CHECK
+        if (this.teamScores[kill.killerTeam] === 20) {
             if (Date.now() - kill.timestamp < 5000) {
-                console.log("🔥 FINAL KILL! SLOW MOTION!");
                 if (this.onSlowMotionTriggered) {
                     this.onSlowMotionTriggered(3000);
                 }
@@ -439,6 +466,7 @@ class NetworkManager {
         }
     }
 });
+
 
 
     }

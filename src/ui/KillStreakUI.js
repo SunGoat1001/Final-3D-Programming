@@ -95,5 +95,13 @@ export class KillStreakUI {
     reset() {
         this.killCount = 0;
         this.lastKillTime = 0;
+
+        if (this.container) {
+            this.container.style.opacity = "0";
+            this.container.style.transform = "translateX(-50%) scale(0.5)";
+        }
+
+        console.log("🧹 Kill streak reset");
     }
+
 }

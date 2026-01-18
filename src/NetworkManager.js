@@ -291,7 +291,7 @@ class NetworkManager {
                      });
                  }
                  
-                 if (redCount < blueCount) team = 'red';
+        if (redCount < blueCount) team = 'red';
                  else if (blueCount < redCount) team = 'blue';
                  else team = Math.random() > 0.5 ? 'red' : 'blue';
                  
@@ -302,11 +302,16 @@ class NetworkManager {
              }
         }
 
+        // Fix: Sync character name with team
+        const characterName = team === 'blue' ? 'messi' : 'ronaldo';
+        this.localPlayerData.characterName = characterName;
+
         // Initialize player data in Firebase
         const initialPlayerData = {
             ...this.localPlayerData,
             uid: this.uid,
             team: team,
+            characterName: characterName,
             health: 100,
             lastSeen: Date.now()
         };

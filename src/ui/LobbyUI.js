@@ -368,10 +368,12 @@ export class LobbyUI {
         
         // Add Local Player
         if (networkManager.connected && networkManager.uid) {
+             const localTeam = networkManager.playerTeam;
+             const localName = localTeam === 'blue' ? 'Messi' : 'Ronaldo';
              allPlayers.push({
                 id: networkManager.uid,
-                name: (networkManager.localPlayerData.characterName === 'messi' ? 'Messi' : 'Ronaldo') + ' (You)',
-                team: networkManager.playerTeam,
+                name: `${localName} (You)`,
+                team: localTeam,
                 isLocal: true
              });
         }
@@ -380,9 +382,10 @@ export class LobbyUI {
         players.forEach(p => {
              // Avoid duplicate if for some reason remote manager has local player
              if (p.id !== networkManager.uid) {
+                 const pName = p.team === 'blue' ? 'Messi' : 'Ronaldo';
                  allPlayers.push({
                     id: p.id,
-                    name: (p.characterName === 'messi_character' || p.characterName === 'messi' ? 'Messi' : 'Ronaldo'),
+                    name: pName,
                     team: p.team,
                     isLocal: false
                  });

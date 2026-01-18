@@ -131,6 +131,11 @@ networkManager.onGameStart = () => {
     // Set Spawn Point based on Team
     const team = networkManager.playerTeam;
     console.log(`Spawn Team: ${team}`);
+
+    // Set Character based on Team
+    // Red = Ronaldo, Blue = Messi
+    const charName = team === 'red' ? 'ronaldo' : 'messi';
+    weaponManager.setCharacter(charName);
     
     let spawnPos = { x: 0, y: 5, z: 0 };
     if (team === 'red') spawnPos = SPAWN_RED;
@@ -297,7 +302,7 @@ function animate() {
             isAiming: weaponManager.isAiming || false,
             isShooting: controls.isMouseDown || false
         },
-        characterName: weaponManager.characterName || 'messi',
+        characterName: weaponManager.characterName || networkManager.localPlayerData.characterName || 'messi',
         modelLoaded: weaponManager.model != null
     });
 

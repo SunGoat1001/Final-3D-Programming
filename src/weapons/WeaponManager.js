@@ -256,11 +256,32 @@ export class WeaponManager {
     }
 
     /**
-     * Load the player character model
+     * Set the player character (model and name)
+     * @param {string} name - 'messi' or 'ronaldo'
      */
-    _loadPlayerModel() {
+    setCharacter(name) {
+        if (this.characterName === name) return;
+        
+        this.characterName = name;
+        const modelName = name === 'ronaldo' ? 'ronaldo_character' : 'messi_character';
+        console.log(`[WeaponManager] Switching character to ${name} (${modelName})...`);
+        
+        // Remove old model if exists
+        if (this.playerModel) {
+            scene.remove(this.playerModel);
+            this.playerModel = null;
+        }
+
+        this._loadPlayerModel(modelName);
+    }
+
+    /**
+     * Load the player character model
+     * @param {string} modelName - Name of the GLB file (without extension)
+     */
+    _loadPlayerModel(modelName = 'messi_character') {
         const loader = new GLTFLoader();
-        loader.load('models/messi_character.glb', (gltf) => {
+        loader.load(`models/${modelName}.glb`, (gltf) => {
             this.playerModel = gltf.scene;
 
             // Adjust scale/position
@@ -268,7 +289,14 @@ export class WeaponManager {
             // Model origin is usually at feet.
             // SCALE: User reported 0.02 was still too big. 
             // Reducing to 0.015 to better fit the weapon handle.
-            this.playerModel.scale.set(0.020, 0.020, 0.020);
+            // this.playerModel.scale.set(0.020, 0.020, 0.020);
+            
+            // Adjust scale based on character
+            if (modelName.includes('ronaldo')) {
+                this.playerModel.scale.set(0.019, 0.019, 0.019); // Slightly different scale if needed
+            } else {
+                this.playerModel.scale.set(0.020, 0.020, 0.020);
+            }
 
             // FPS Camera at 1.6m eye level
             this.playerModel.position.set(0, -1.6, 0);
@@ -331,11 +359,13 @@ export class WeaponManager {
             // Add model to SCENE so it casts proper shadows and stays upright
             scene.add(this.playerModel);
 
-            console.log('[WeaponManager] Player model loaded');
+            console.log(`[WeaponManager] Player model loaded: ${modelName}`);
 
             // Notify UI
             if (this.onCharacterLoaded) {
-                this.onCharacterLoaded('Messi Character');
+                // Return 'Messi' or 'Ronaldo' capitalized
+                const displayName = modelName.includes('ronaldo') ? 'Ronaldo' : 'Messi';
+                this.onCharacterLoaded(displayName);
             }
 
         }, undefined, (err) => {

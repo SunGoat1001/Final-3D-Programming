@@ -67,11 +67,11 @@ class NetworkManager {
         this.onTookDamage = null;
         this.onGameStart = null; // Callback when game starts
         this.onRoomUpdate = null; // Callback when room info changes (players/teams)
-        
+
         this.scoreboardData = [];
         this.teamScores = { red: 0, blue: 0 };
         this.matchEnded = false;
-        
+
         // Callback for slow motion
         this.onSlowMotionTriggered = null;
 
@@ -105,7 +105,7 @@ class NetworkManager {
     async getRooms() {
         if (!this.db) await this.initialize();
         const roomsRef = ref(this.db, 'rooms');
-        
+
         try {
             const snapshot = await get(roomsRef);
             return this._processRoomsSnapshot(snapshot);
@@ -117,24 +117,49 @@ class NetworkManager {
 
     subscribeToRoomList(callback) {
         if (!this.db && !this.completedInit) {
-             // If not initialized, try to init, but this serves async issues.
-             // Assume caller calls initialize() or getRooms() once before.
-             // Or just call initialize here if needed, but it's async.
-             this.initialize().then(() => {
-                 this._setupRoomListListener(callback);
-             });
-             return () => {}; // return empty unsub first
+            // If not initialized, try to init, but this serves async issues.
+            // Assume caller calls initialize() or getRooms() once before.
+            // Or just call initialize here if needed, but it's async.
+            this.initialize().then(() => {
+                this._setupRoomListListener(callback);
+            });
+            return () => { }; // return empty unsub first
         }
         return this._setupRoomListListener(callback);
     }
 
     _setupRoomListListener(callback) {
         const roomsRef = ref(this.db, 'rooms');
+        let lastSignature = '';
+        let pendingRooms = null;
+        let debounceTimer = null;
+
+        const emitRooms = () => {
+            if (!pendingRooms) return;
+            const roomsToEmit = pendingRooms;
+            pendingRooms = null;
+            debounceTimer = null;
+
+            const signature = this._getRoomsSignature(roomsToEmit);
+            if (signature === lastSignature) return; // Skip no-op updates (e.g., heartbeat pings)
+            lastSignature = signature;
+            callback(roomsToEmit);
+        };
+
         const unsubscribe = onValue(roomsRef, (snapshot) => {
-            const rooms = this._processRoomsSnapshot(snapshot);
-            callback(rooms);
+            pendingRooms = this._processRoomsSnapshot(snapshot);
+            // Throttle UI updates so rapid heartbeats don't constantly rebuild the list
+            if (debounceTimer) return;
+            debounceTimer = setTimeout(emitRooms, 300);
         });
-        return unsubscribe;
+
+        return () => {
+            if (debounceTimer) {
+                clearTimeout(debounceTimer);
+                debounceTimer = null;
+            }
+            unsubscribe();
+        };
     }
 
     _processRoomsSnapshot(snapshot) {
@@ -143,7 +168,7 @@ class NetworkManager {
             snapshot.forEach((child) => {
                 const data = child.val();
                 const now = Date.now();
-                
+
                 // 1. INVALID ROOM CHECK
                 if (!data.info || !data.info.name) {
                     // console.log(`🧹 Cleaning up invalid room: ${child.key}`);
@@ -167,12 +192,12 @@ class NetworkManager {
 
                 // 3. EMPTY ROOM CHECK
                 if (activePlayers === 0) {
-                     const createdAt = data.info.createdAt || 0;
-                     if (now - createdAt > 15000) {
-                         // Stale room
-                         // remove(ref(this.db, `rooms/${child.key}`));
-                     }
-                     return; 
+                    const createdAt = data.info.createdAt || 0;
+                    if (now - createdAt > 15000) {
+                        // Stale room
+                        // remove(ref(this.db, `rooms/${child.key}`));
+                    }
+                    return;
                 }
 
                 rooms.push({
@@ -187,9 +212,18 @@ class NetworkManager {
         return rooms;
     }
 
+    _getRoomsSignature(rooms) {
+        // Stable signature used to ignore redundant onValue updates caused by heartbeat lastSeen writes
+        return rooms
+            .slice()
+            .sort((a, b) => a.id.localeCompare(b.id))
+            .map(r => `${r.id}|${r.name}|${r.playerCount}|${r.status}`)
+            .join('~');
+    }
+
     async createRoom(roomName) {
         if (!this.db) await this.initialize();
-        
+
         const newRoomRef = push(ref(this.db, 'rooms'));
         this.roomId = newRoomRef.key;
         this.roomName = roomName;
@@ -232,7 +266,7 @@ class NetworkManager {
 
         console.log('🎮 Joining room:', this.roomName, `(${this.roomId})`, `Status: ${status}`);
         await this.initializeConnection(team);
-        
+
         return status;
     }
 
@@ -241,22 +275,22 @@ class NetworkManager {
             console.warn("⚠️ Cannot set team, not connected yet.");
             return;
         }
-        
+
         // Disable spamming
         if (this.playerTeam === team) return;
 
         console.log(`Swapping to team ${team}...`);
-        
+
         // Update local
         this.playerTeam = team;
-        this.localPlayerData.characterName = team === 'blue' ? 'messi' : 'ronaldo'; 
-        
+        this.localPlayerData.characterName = team === 'blue' ? 'messi' : 'ronaldo';
+
         const playerRef = ref(this.db, `rooms/${this.roomId}/players/${this.uid}`);
         await update(playerRef, {
             team: team,
             characterName: this.localPlayerData.characterName
         });
-        
+
         // Force UI update locally just in case listener lags
         if (this.onRoomUpdate) this.onRoomUpdate();
     }
@@ -271,35 +305,35 @@ class NetworkManager {
 
     async initializeConnection(selectedTeam = 'auto') {
         const playerRef = ref(this.db, `rooms/${this.roomId}/players/${this.uid}`);
-        
+
         // Determine team if auto (Smart Balancing)
         let team = selectedTeam;
         if (team === 'auto') {
-             try {
-                 const roomPlayersRef = ref(this.db, `rooms/${this.roomId}/players`);
-                 const snapshot = await get(roomPlayersRef);
-                 let redCount = 0;
-                 let blueCount = 0;
-                 
-                 if (snapshot.exists()) {
-                     snapshot.forEach(child => {
-                         const p = child.val();
-                         if (child.key !== this.uid) { // Don't count self if already there (reconnect case)
-                             if (p.team === 'red') redCount++;
-                             else if (p.team === 'blue') blueCount++;
-                         }
-                     });
-                 }
-                 
-        if (redCount < blueCount) team = 'red';
-                 else if (blueCount < redCount) team = 'blue';
-                 else team = Math.random() > 0.5 ? 'red' : 'blue';
-                 
-                 console.log(`⚖️ Auto-balancing to team: ${team} (Red: ${redCount}, Blue: ${blueCount})`);
-             } catch (e) {
-                 console.warn("Auto-balance failed, using random", e);
-                 team = Math.random() > 0.5 ? 'red' : 'blue';
-             }
+            try {
+                const roomPlayersRef = ref(this.db, `rooms/${this.roomId}/players`);
+                const snapshot = await get(roomPlayersRef);
+                let redCount = 0;
+                let blueCount = 0;
+
+                if (snapshot.exists()) {
+                    snapshot.forEach(child => {
+                        const p = child.val();
+                        if (child.key !== this.uid) { // Don't count self if already there (reconnect case)
+                            if (p.team === 'red') redCount++;
+                            else if (p.team === 'blue') blueCount++;
+                        }
+                    });
+                }
+
+                if (redCount < blueCount) team = 'red';
+                else if (blueCount < redCount) team = 'blue';
+                else team = Math.random() > 0.5 ? 'red' : 'blue';
+
+                console.log(`⚖️ Auto-balancing to team: ${team} (Red: ${redCount}, Blue: ${blueCount})`);
+            } catch (e) {
+                console.warn("Auto-balance failed, using random", e);
+                team = Math.random() > 0.5 ? 'red' : 'blue';
+            }
         }
 
         // Fix: Sync character name with team
@@ -323,7 +357,7 @@ class NetworkManager {
             this.joinTime = Date.now();
             killStreakUI.reset();
 
-                        // 🔥 CLEAR KILL HISTORY WHEN JOIN
+            // 🔥 CLEAR KILL HISTORY WHEN JOIN
             const killsRef = ref(this.db, `rooms/${this.roomId}/kills`);
             await remove(killsRef);
 
@@ -345,7 +379,7 @@ class NetworkManager {
             }
 
             this.connected = true;
-            
+
             // Trigger UI update now that we are connected
             if (this.onRoomUpdate) this.onRoomUpdate();
             this.showTeamNotification(this.playerTeam);
@@ -356,7 +390,7 @@ class NetworkManager {
             this.setupConnectionStateListener();
             this.setupGameLogicListeners(); // Added logic listener
             this.setupRoomStateListener(); // New listener for game start
-            
+
             this.startUpdateLoop();
             this.startHeartbeat();
             this.startTimeoutChecker();
@@ -366,14 +400,14 @@ class NetworkManager {
     }
 
     setupRoomStateListener() {
-         const infoRef = ref(this.db, `rooms/${this.roomId}/info`);
-         this.roomStateListener = onValue(infoRef, (snapshot) => {
-              const info = snapshot.val();
-              if (info && info.status === 'playing') {
-                  if (this.onGameStart) this.onGameStart();
-              }
-              // Could also emit room info updates (player counts) here
-         });
+        const infoRef = ref(this.db, `rooms/${this.roomId}/info`);
+        this.roomStateListener = onValue(infoRef, (snapshot) => {
+            const info = snapshot.val();
+            if (info && info.status === 'playing') {
+                if (this.onGameStart) this.onGameStart();
+            }
+            // Could also emit room info updates (player counts) here
+        });
     }
 
     setupGameLogicListeners() {
@@ -383,119 +417,119 @@ class NetworkManager {
 
         // Process hits (This acts as the game server logic)
         onChildAdded(hitsRef, (snapshot) => {
-             const hit = snapshot.val();
-             if (!hit) return;
+            const hit = snapshot.val();
+            if (!hit) return;
 
-             // Logic to track damage and kills
-             // Note: In P2P, we need to locate the victim and apply damage locally
-             // to keep sync. 
-             
-             // 1. Identify Victim
-             let victimTeam = null;
-             
-             // Check if I am the victim
-             if (hit.targetId === this.uid) {
-                 takeDamage(hit.damage);
-                 // Check if I died (takeDamage logic handles health, but we need to know if it was fatal here)
-                 // We can't easily know if *this* specific hit killed me without checking health before/after
-                 // simplified: we assume hits are valid and reduce health.
-             } else {
-                 // Check if remote player
-                 const remotePlayer = this.remotePlayerManager.getPlayer(hit.targetId);
-                 if (remotePlayer) {
-                     remotePlayer.takeDamage(hit.damage);
-                     victimTeam = remotePlayer.team;
-                     if (remotePlayer.health <= 0) {
-                         // It's a kill? 
-                         // Need de-duplication or state tracking because we might re-process old hits?
-                         // onChildAdded runs on existing hits.
-                         // But we don't respawn remote players here explicitly yet.
-                     }
-                 }
-             }
-             
-             // 2. Score Tracking (Heuristic: we count every lethal hit or just count all kills if we had a kill feed)
-             // Since 'hits' are raw damage, we need to know if it was a KILL.
-             // Issue: 'hits' doesn't say "died".
-             // We can't trust health <= 0 check on historical data without replaying perfectly.
-             // BUT, the user wants "Slow Motion on Kill". 
-             // Ideally we should push 'kills' to DB.
-             // But existing code pushes 'hits'.
-             // Let's assume for this feature that we will just check if this hit likely caused a win.
-             
-             // Since we can't perfectly track score without a 'score' node or 'kills' events,
-             // I'll implement a 'kills' listener if I can, OR I will modify sendHitPlayer to push 'kill' if fatal.
-             
-             // But 'sendHitPlayer' doesn't know if fatal unless it checks health.
-             
-             // Workaround: We will listen for 'hits' and simply assume valid hits reduce health.
-             // We will count how many times players have died? No. 
-             
-             // Better: Let's use the 'kills' node I will add support for.
-             // In sendHitPlayer, I will add logic to check for kill.
-        });
-        
-            const killsRef = ref(this.db, `rooms/${this.roomId}/kills`);
-onChildAdded(killsRef, (snapshot) => {
-    const kill = snapshot.val();
-    if (!kill) return;
+            // Logic to track damage and kills
+            // Note: In P2P, we need to locate the victim and apply damage locally
+            // to keep sync. 
 
-    // ❗ BỎ QUA KILL CŨ
-    if (!kill.timestamp || kill.timestamp < this.joinTime) return;
+            // 1. Identify Victim
+            let victimTeam = null;
 
-    console.log("🩸 KILL EVENT:", kill);
-
-    // =========================
-    // 🔥 HIỆN KILLFEED
-    // =========================
-
-    const killerName =
-        kill.killerId === this.uid
-            ? "YOU"
-            : this.remotePlayerManager.getPlayer(kill.killerId)?.characterName || "ENEMY";
-
-    const victimName =
-        kill.victimId === this.uid
-            ? "YOU"
-            : this.remotePlayerManager.getPlayer(kill.victimId)?.characterName || "ENEMY";
-
-    // Lấy weapon hiện tại của killer (nếu có)
-    const killerPlayer = this.remotePlayerManager.getPlayer(kill.killerId);
-    const weaponId = killerPlayer?.currentWeapon || "default";
-
-    // ✅ GỌI KILLFEED UI
-    killFeed.addKill(killerName, victimName, weaponId);
-
-    // =========================
-    // RESET STREAK NẾU MÌNH CHẾT
-    // =========================
-    if (kill.victimId === this.uid) {
-        console.log("☠️ You died → reset killstreak");
-        killStreakUI.reset();
-    }
-
-    // =========================
-    // SCORE + STREAK
-    // =========================
-    if (kill.killerTeam) {
-        this.teamScores[kill.killerTeam] =
-            (this.teamScores[kill.killerTeam] || 0) + 1;
-
-        // ✅ CHỈ cộng streak nếu mình là killer
-        if (kill.killerId === this.uid) {
-            killStreakUI.onKill();
-        }
-
-        // WIN CHECK
-        if (this.teamScores[kill.killerTeam] === 20) {
-            if (Date.now() - kill.timestamp < 5000) {
-                if (this.onSlowMotionTriggered) {
-                    this.onSlowMotionTriggered(3000);
+            // Check if I am the victim
+            if (hit.targetId === this.uid) {
+                takeDamage(hit.damage);
+                // Check if I died (takeDamage logic handles health, but we need to know if it was fatal here)
+                // We can't easily know if *this* specific hit killed me without checking health before/after
+                // simplified: we assume hits are valid and reduce health.
+            } else {
+                // Check if remote player
+                const remotePlayer = this.remotePlayerManager.getPlayer(hit.targetId);
+                if (remotePlayer) {
+                    remotePlayer.takeDamage(hit.damage);
+                    victimTeam = remotePlayer.team;
+                    if (remotePlayer.health <= 0) {
+                        // It's a kill? 
+                        // Need de-duplication or state tracking because we might re-process old hits?
+                        // onChildAdded runs on existing hits.
+                        // But we don't respawn remote players here explicitly yet.
+                    }
                 }
             }
-        }
-    }
-});
+
+            // 2. Score Tracking (Heuristic: we count every lethal hit or just count all kills if we had a kill feed)
+            // Since 'hits' are raw damage, we need to know if it was a KILL.
+            // Issue: 'hits' doesn't say "died".
+            // We can't trust health <= 0 check on historical data without replaying perfectly.
+            // BUT, the user wants "Slow Motion on Kill". 
+            // Ideally we should push 'kills' to DB.
+            // But existing code pushes 'hits'.
+            // Let's assume for this feature that we will just check if this hit likely caused a win.
+
+            // Since we can't perfectly track score without a 'score' node or 'kills' events,
+            // I'll implement a 'kills' listener if I can, OR I will modify sendHitPlayer to push 'kill' if fatal.
+
+            // But 'sendHitPlayer' doesn't know if fatal unless it checks health.
+
+            // Workaround: We will listen for 'hits' and simply assume valid hits reduce health.
+            // We will count how many times players have died? No. 
+
+            // Better: Let's use the 'kills' node I will add support for.
+            // In sendHitPlayer, I will add logic to check for kill.
+        });
+
+        const killsRef = ref(this.db, `rooms/${this.roomId}/kills`);
+        onChildAdded(killsRef, (snapshot) => {
+            const kill = snapshot.val();
+            if (!kill) return;
+
+            // ❗ BỎ QUA KILL CŨ
+            if (!kill.timestamp || kill.timestamp < this.joinTime) return;
+
+            console.log("🩸 KILL EVENT:", kill);
+
+            // =========================
+            // 🔥 HIỆN KILLFEED
+            // =========================
+
+            const killerName =
+                kill.killerId === this.uid
+                    ? "YOU"
+                    : this.remotePlayerManager.getPlayer(kill.killerId)?.characterName || "ENEMY";
+
+            const victimName =
+                kill.victimId === this.uid
+                    ? "YOU"
+                    : this.remotePlayerManager.getPlayer(kill.victimId)?.characterName || "ENEMY";
+
+            // Lấy weapon hiện tại của killer (nếu có)
+            const killerPlayer = this.remotePlayerManager.getPlayer(kill.killerId);
+            const weaponId = killerPlayer?.currentWeapon || "default";
+
+            // ✅ GỌI KILLFEED UI
+            killFeed.addKill(killerName, victimName, weaponId);
+
+            // =========================
+            // RESET STREAK NẾU MÌNH CHẾT
+            // =========================
+            if (kill.victimId === this.uid) {
+                console.log("☠️ You died → reset killstreak");
+                killStreakUI.reset();
+            }
+
+            // =========================
+            // SCORE + STREAK
+            // =========================
+            if (kill.killerTeam) {
+                this.teamScores[kill.killerTeam] =
+                    (this.teamScores[kill.killerTeam] || 0) + 1;
+
+                // ✅ CHỈ cộng streak nếu mình là killer
+                if (kill.killerId === this.uid) {
+                    killStreakUI.onKill();
+                }
+
+                // WIN CHECK
+                if (this.teamScores[kill.killerTeam] === 20) {
+                    if (Date.now() - kill.timestamp < 5000) {
+                        if (this.onSlowMotionTriggered) {
+                            this.onSlowMotionTriggered(3000);
+                        }
+                    }
+                }
+            }
+        });
 
 
 
@@ -529,7 +563,7 @@ onChildAdded(killsRef, (snapshot) => {
                             id: playerId,
                             ...updatedData
                         });
-                        
+
                         // FIX: Trigger UI update when remote player data changes (e.g. team swap)
                         if (this.onRoomUpdate) this.onRoomUpdate();
                     }
@@ -556,7 +590,7 @@ onChildAdded(killsRef, (snapshot) => {
                     unsubscribe();
                     this.playerListeners.delete(playerId);
                 }
-                
+
                 if (this.onRoomUpdate) this.onRoomUpdate();
             }
         });
@@ -813,14 +847,14 @@ onChildAdded(killsRef, (snapshot) => {
                 // We check if current health - damage <= 0. 
                 // Note: victim.health is the currently synced health.
                 if (victim && (victim.health - damage <= 0)) {
-                     const killsRef = ref(this.db, `rooms/${this.roomId}/kills`);
-                     await push(killsRef, {
-                          killerId: this.uid,
-                          killerTeam: this.playerTeam,
-                          victimId: targetId,
-                          timestamp: Date.now()
-                     });
-                     console.log(`💀 Sent KILL confirm for ${targetId}`);
+                    const killsRef = ref(this.db, `rooms/${this.roomId}/kills`);
+                    await push(killsRef, {
+                        killerId: this.uid,
+                        killerTeam: this.playerTeam,
+                        victimId: targetId,
+                        timestamp: Date.now()
+                    });
+                    console.log(`💀 Sent KILL confirm for ${targetId}`);
                 }
 
                 // ===== SOCKET.IO (COMMENTED OUT) =====
@@ -861,27 +895,27 @@ onChildAdded(killsRef, (snapshot) => {
         if (!this.roomId || !this.uid) return;
 
         console.log("🚪 Leaving room...");
-        
+
         try {
             // 1. Get current room state to decide Host Migration or Deletion
             const playersRef = ref(this.db, `rooms/${this.roomId}/players`);
             const snapshot = await get(playersRef);
-            
+
             if (snapshot.exists()) {
                 const players = snapshot.val();
                 const playerIds = Object.keys(players).filter(id => id !== this.uid); // Everyone else
-                
+
                 if (playerIds.length === 0) {
-                     // 1a. No one left -> Delete Room
-                     console.log("🧹 Last player leaving, deleting room...");
-                     await remove(ref(this.db, `rooms/${this.roomId}`));
+                    // 1a. No one left -> Delete Room
+                    console.log("🧹 Last player leaving, deleting room...");
+                    await remove(ref(this.db, `rooms/${this.roomId}`));
                 } else if (this.isHost) {
-                     // 1b. I am host, but others remain -> Migrate Host
-                     const newHostId = playerIds[0]; // Pick first available char
-                     console.log(`👑 Migrating host to ${newHostId}`);
-                     await update(ref(this.db, `rooms/${this.roomId}/info`), {
-                         hostId: newHostId
-                     });
+                    // 1b. I am host, but others remain -> Migrate Host
+                    const newHostId = playerIds[0]; // Pick first available char
+                    console.log(`👑 Migrating host to ${newHostId}`);
+                    await update(ref(this.db, `rooms/${this.roomId}/info`), {
+                        hostId: newHostId
+                    });
                 }
             }
 
@@ -891,7 +925,7 @@ onChildAdded(killsRef, (snapshot) => {
 
             // 3. Cleanup Local State
             this.cleanup();
-            
+
         } catch (e) {
             console.error("Error leaving room:", e);
         }
@@ -905,7 +939,7 @@ onChildAdded(killsRef, (snapshot) => {
         // Unsubscribe listeners
         this.playerListeners.forEach(unsubscribe => unsubscribe());
         this.playerListeners.clear();
-        
+
         if (this.roomStateListener) {
             this.roomStateListener(); // Unsub
             this.roomStateListener = null;
@@ -915,14 +949,14 @@ onChildAdded(killsRef, (snapshot) => {
             this.connectionListener();
             this.connectionListener = null;
         }
-        
+
         this.connected = false;
         this.roomId = null;
         this.roomName = null;
         this.isHost = false;
         this.playerTeam = null;
-        this.remotePlayerManager.clear(); 
-        
+        this.remotePlayerManager.clear();
+
         console.log("✅ Cleaned up local network state.");
     }
 

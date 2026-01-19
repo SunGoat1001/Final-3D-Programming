@@ -60,8 +60,13 @@ export function processShot(shotData) {
     // Process ranged weapon shots (bullets/pellets)
     shotData.shots.forEach((shot) => {
       createBullet(shot);
-      weaponId: shotData.weapon.id
     });
+
+    // MULTIPLAYER: Broadcast shot to others
+    if (networkManager && shotData.shots.length > 0) {
+      const firstShot = shotData.shots[0];
+      networkManager.sendShoot(firstShot.origin, firstShot.direction, shotData.weapon.id);
+    }
   } else if (shotData.isMelee) {
     // Process melee attack
     processMeleeAttack(shotData);
@@ -72,7 +77,7 @@ export function processShot(shotData) {
  * Create a bullet from shot data
  * @param {Object} shot - Individual shot data
  */
-function createBullet(shot) {
+export function createBullet(shot) {
   // Create bullet mesh
   const bulletGeometry = new THREE.SphereGeometry(BULLET_RADIUS, 8, 8);
   const bulletMaterial = new THREE.MeshBasicMaterial({ color: 0xffff00 });

@@ -66,6 +66,7 @@ class NetworkManager {
         this.onPlayerKilled = null;
         this.onTookDamage = null;
         this.onGameStart = null; // Callback when game starts
+        this.onPlayerShot = null; // Callback for remote player shooting
         this.onRoomUpdate = null; // Callback when room info changes (players/teams)
 
         this.scoreboardData = [];
@@ -592,6 +593,21 @@ class NetworkManager {
                 }
 
                 if (this.onRoomUpdate) this.onRoomUpdate();
+            }
+        });
+
+        // Listen for shots (Visuals)
+        const allShotsRef = ref(this.db, `rooms/${this.roomId}/shots`);
+        onChildAdded(allShotsRef, (snapshot) => {
+            const shot = snapshot.val();
+            if (!shot) return;
+
+            // Skip old shots or local shots
+            if (shot.shooterId === this.uid) return;
+            if (shot.timestamp < this.joinTime) return;
+
+            if (this.onPlayerShot) {
+                this.onPlayerShot(shot);
             }
         });
     }

@@ -42,7 +42,7 @@ export class PointerLockControlsCannon {
 
         // Aim state
         this.isAiming = false;
-        
+
         // Control state
         this.enabled = false; // Disabled by default until game starts
 
@@ -61,7 +61,7 @@ export class PointerLockControlsCannon {
 
         // Velocity for input-based movement
         this.inputVelocity = new THREE.Vector3();
-        
+
         // Footstep sound timer
         this.footstepTimer = 0;
         // Contact normal to detect if on ground
@@ -375,7 +375,7 @@ export class PointerLockControlsCannon {
         // Normalize ~ 0 → 1
         const move01 = Math.min(horizontalSpeed / 6, 1);
         setMoveAmount(move01);
-                    // ================= FOOTSTEP SYSTEM =================
+        // ================= FOOTSTEP SYSTEM =================
 
         // Check moving on ground
         const isMoving = horizontalSpeed > 0.2 && this.canJump && !this.isCrouching;

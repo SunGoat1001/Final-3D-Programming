@@ -9,7 +9,7 @@ import { world } from './physics.js';
 import { createPlayerBody, updateHealthUI, setSpawnPoint } from './player.js';
 import { PointerLockControlsCannon } from './controls.js';
 import { FIXED_TIME_STEP, MAX_SUB_STEPS, SERVER_URL, SPAWN_RED, SPAWN_BLUE } from './constants.js';
-import { processShot, updateBullets } from './shooting.js';
+import { processShot, updateBullets, createBullet } from './shooting.js';
 import { initObstacles } from './obstacles.js';
 import { updateEnemy } from './enemy.js';
 
@@ -36,14 +36,32 @@ import { getPlayerPosition } from './player.js';
 // Setup network manager for shooting
 // Setup network manager for shooting
 setNetworkManager(networkManager);
+networkManager.onPlayerShot = (shotData) => {
+    const remotePlayer = networkManager.remotePlayerManager.getPlayer(shotData.shooterId);
+    if (remotePlayer) {
+        // 1. Show muzzle flash on remote player muzzle
+        remotePlayer.playShootEffect(shotData);
+        // 2. Spawn the bullet visual for everyone
+        createBullet({
+            origin: new THREE.Vector3(shotData.position.x, shotData.position.y, shotData.position.z),
+            direction: new THREE.Vector3(shotData.direction.x, shotData.direction.y, shotData.direction.z),
+            damage: 0, // Visual only for remote shots? 
+            // Actually, we want it to potentially hit people if we use client-side authority.
+            // But let's set damage to 0 to avoid double-processing damage.
+            // The shooter already sends 'hitPlayer' events.
+            bulletSpeed: 150,
+            weaponId: shotData.weapon
+        });
+    }
+};
 
 // Handle Slow Motion Event
 networkManager.onSlowMotionTriggered = (duration) => {
     console.log("⏯️ SLOW MOTION TRIGGERED!");
     setTimeScale(0.2); // 5x slow motion
-    
+
     // Play sound / effect?
-    
+
     setTimeout(() => {
         setTimeScale(1.0);
         console.log("▶️ Normal speed resumed");
@@ -127,7 +145,7 @@ networkManager.onGameStart = () => {
     console.log("🚀 GAME STARTED! Enabling controls...");
     lobbyUI.hide();
     controls.enabled = true;
-    
+
     // Set Spawn Point based on Team
     const team = networkManager.playerTeam;
     console.log(`Spawn Team: ${team}`);
@@ -136,21 +154,21 @@ networkManager.onGameStart = () => {
     // Red = Ronaldo, Blue = Messi
     const charName = team === 'red' ? 'ronaldo' : 'messi';
     weaponManager.setCharacter(charName);
-    
+
     let spawnPos = { x: 0, y: 5, z: 0 };
     if (team === 'red') spawnPos = SPAWN_RED;
     else if (team === 'blue') spawnPos = SPAWN_BLUE;
-    
+
     // Update player spawn point for future respawns
     setSpawnPoint(spawnPos);
-    
+
     // Teleport immediately
     if (sphereBody) {
         sphereBody.position.set(spawnPos.x, spawnPos.y, spawnPos.z);
         sphereBody.velocity.set(0, 0, 0);
         sphereBody.angularVelocity.set(0, 0, 0);
     }
-    
+
     // Set initial pointer lock instruction visibility
     const instructions = document.getElementById('instructions');
     if (instructions) instructions.style.display = 'block';
@@ -220,25 +238,25 @@ function animate() {
 
     // Lobby Camera Animation (Orbit view of map) & UI Toggling
     if (!controls.enabled) {
-        const time = Date.now() * 0.0001; 
+        const time = Date.now() * 0.0001;
         const radius = 40;
         camera.position.set(Math.sin(time) * radius, 30, Math.cos(time) * radius);
         camera.lookAt(0, 0, 0);
     }
-    
+
     // UI Visibility State Tracking
     const isGame = controls.enabled;
     if (networkManager._lastControlsState !== isGame) {
         networkManager._lastControlsState = isGame;
         const display = isGame ? 'block' : 'none';
-        
+
         // Toggle HUD Elements
         const uiIds = ['crosshair', 'health-container', 'instructions'];
         uiIds.forEach(id => {
             const el = document.getElementById(id);
             if (el) el.style.display = display;
         });
-        
+
         // Toggle Weapon
         if (weaponManager && weaponManager.setVisible) {
             weaponManager.setVisible(isGame);

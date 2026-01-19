@@ -154,6 +154,10 @@ export function initObstacles() {
     // ván gỗ trượt
     createObstacle(-0.558688, 7.89912, 1.2, 0.6, 0.3, 0.2);
     createObstacle(1.49515, 7.7, 0.543078, 2.8, 0.08, 0.85, 0, 0, THREE.MathUtils.degToRad(22.1));
+    createObstacle(-0.203323, 2.25762, 0.913308, 2, 0.02, 0.55, 0, THREE.MathUtils.degToRad(90), THREE.MathUtils.degToRad(7.42019));
+    createObstacle(-0.889054, 2.25762, 0.913308, 2, 0.02, 0.25, 0, THREE.MathUtils.degToRad(90), THREE.MathUtils.degToRad(7.42019));
+    createObstacle(-3.85862, 0.253123, 0.983808, 2, 0.02, 1.7, 0, 0, THREE.MathUtils.degToRad(83.0077));
+    createObstacle(-3.79547, -1.4092, 0.983808, 2, 0.02, 0.1, 0, 0, THREE.MathUtils.degToRad(80));
 }
 
 function createObstacle(x, z, y, width, height, depth, rotateX = 0, rotateY = 0, rotateZ = 0) {

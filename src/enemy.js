@@ -12,7 +12,7 @@ let enemyHealth = 100;
 const enemyGeometry = new THREE.BoxGeometry(2, 3, 2);
 const enemyMaterial = new THREE.MeshStandardMaterial({ color: 0xff0000 });
 enemyMesh = new THREE.Mesh(enemyGeometry, enemyMaterial);
-enemyMesh.position.set(0, 3, 0);
+enemyMesh.position.set(0, 3, -22);
 enemyMesh.castShadow = true;
 scene.add(enemyMesh);
 

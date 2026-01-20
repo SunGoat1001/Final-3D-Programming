@@ -19,11 +19,26 @@ export function initObstacles() {
     // Create orange walll
     createObstacle(3.64092, 5.06983, 0.5, 0.9, 1, 0.1);
     createObstacle(3.64092, -3.9, 0.5, 0.9, 1, 0.1);
-    createObstacle(-1.28395, -0.861591, 0.5, 1.3, 1, 0.1);
-    createObstacle(1.76424, -0.861591, 0.5, 1.8, 1, 0.1);
-    createObstacle(3.69139, -0.861591, 0.5, 1.3, 1, 0.1);
-    createObstacle(0.101466, -0.861591, 1.21262, 1.3, 1, 0.1);
+    createObstacle(-1.28395, -0.861591, 0.5, 1.5, 1, 0.1);
+    createObstacle(1.4424, -0.861591, 0.5, 2, 1, 0.1);
+    createObstacle(2.53169, -0.861591, 0.5, 0.2, 1, 0.1);
+    createObstacle(3.99139, -0.861591, 0.5, 1.3, 1, 0.1);
+    createObstacle(0.101466, -0.861591, 1.21262, 1, 1, 0.1);
     createObstacle(0.799693, -0.861591, 1.5, 2.4, 1, 0.1);
+    createObstacle(2.99414, -0.918402, 1.5, 0.3, 1, 0.1);
+    createObstacle(2.99414, 0.918402, 1.5, 0.3, 1, 0.1);
+    createObstacle(-1.20586, -0.918402, 1.5, 0.3, 1, 0.1);
+    createObstacle(1.72414, 1.3116, 1.5, 0.3, 1, 0.1);
+
+    // House
+    createObstacle(-2.0988, 0.214895, 0.5, 2.1, 1, 0.1, 0, THREE.MathUtils.degToRad(90), 0);
+    createObstacle(-1.70892, 1.27993, 0.5, 0.9, 1, 0.1);
+    createObstacle(0.85037, 1.27993, 0.5, 2.1, 1, 0.1);
+    createObstacle(2.28648, 0.899428, 0.5, 0.7, 1, 0.1);
+    createObstacle(3.71648, 0.899428, 0.5, 0.7, 1, 0.1);
+    createObstacle(2.11648, -0.549428, 0.5, 0.1, 1, 0.45);
+    createObstacle(2.11648, 0.549428, 0.5, 0.1, 1, 0.45);
+    createObstacle(3.88648, 0, 0.5, 0.2, 1, 1.3);
 
     // Create cầu thang
     createObstacle(-3.55903, -4.87136, 0, 0.88, 0.5, 0.4);
@@ -109,17 +124,22 @@ export function initObstacles() {
     createObstacle(-0.685341, -1.17882, 0.223578, 0.35, 0.4, 0.35);
     createObstacle(-2.39739, -0.231389, 0.45, 0.35, 1, 0.35);
 
-
+    // 
     createObstacle(2.03169, 1.655, 0, 0.5, 0.5, 0.5);
     createObstacle(3.74457, 5.43362, 0, 0.5, 0.5, 0.5);
     createObstacle(-1.22959, 6.50582, 1.3, 0.5, 0.5, 0.5);
-    createObstacle(2.91284, 0, 1.25, 0.5, 0.5, 0.5);
-    createObstacle(2.39303, 0, 1.25, 0.5, 0.5, 0.5);
+    createObstacle(2.91284, 0, 1.25, 0.4, 0.4, 0.4);
+    createObstacle(2.39303, 0, 1.25, 0.4, 0.4, 0.4);
     createObstacle(1.13263, 1.13101, 1.25, 0.5, 0.5, 0.5);
     createObstacle(2.03169, -1.25, 0, 0.5, 0.5, 0.5);
     createObstacle(3.28352, -2.42351, 0, 0.38, 0.38, 0.38);
     createObstacle(0.455356, -5.86903, 0, 0.5, 0.5, 0.5);
     createObstacle(-2.24637, -4.70349, 0, 0.4, 0.5, 0.4);
+
+    // Blue car
+    createObstacle(2.08015, 3.26634, 0.2, 0.5, 0.72, 1.5, 0, THREE.MathUtils.degToRad(35.5818), 0);
+    // Red car
+    createObstacle(1.29982, -3.44075, 0.2, 0.5, 0.72, 1.5, 0, THREE.MathUtils.degToRad(35.5818), 0);
 
     // Cái thùng (giống thùng dầu)
     createObstacle(-0.761102, -6.3548, 1.23, 0.2, 0.3, 0.2);
@@ -174,8 +194,6 @@ export function initObstacles() {
     createObstacle(-3.69492, 2.4352, 0.18, 0.54, 0.55, 0.2);
     createObstacle(-1.76996, 2.58674, 0.18, 0.54, 0.55, 0.2);
     createObstacle(-2.0689, -1.28354, 0.18, 0.54, 0.55, 0.2, 0, THREE.MathUtils.degToRad(90), 0);
-
-    // House
 
 }
 

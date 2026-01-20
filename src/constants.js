@@ -50,8 +50,8 @@ export const FIXED_TIME_STEP = 1 / 60;
 export const MAX_SUB_STEPS = 3;
 
 // Shooting
-export const BULLET_SPEED = 150;
-export const BULLET_LIFETIME = 25; // ms
+export const BULLET_SPEED = 800;
+export const BULLET_LIFETIME = 500; // ms
 export const BULLET_DAMAGE = 10;
 export const BULLET_RADIUS = 0.1;
 

@@ -68,7 +68,7 @@ io.on('connection', (socket) => {
     const playerData = {
         id: socket.id,
         team: team,
-        position: { x: 0, y: 2, z: 0 },
+        position: { x: 0, y: 0, z: 0 },
         rotation: { x: 0, y: 0, z: 0 },
         bodyRotation: 0,
         health: 100,

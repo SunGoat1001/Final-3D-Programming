@@ -7,7 +7,7 @@ import { initializeApp } from 'firebase/app';
 import { getDatabase, ref, set, get, update, push, onValue, onChildAdded, onChildRemoved, onChildChanged, remove, onDisconnect } from 'firebase/database';
 import { getAuth, signInAnonymously } from 'firebase/auth';
 import { RemotePlayerManager } from './RemotePlayerManager.js';
-import { takeDamage, respawn } from './player.js';
+import { takeDamage, respawn, setOnHealthChange } from './player.js';
 import { killFeed } from './ui/killFeedInstance.js';
 
 import { killStreakUI } from "./ui/killStreakInstance.js";
@@ -53,6 +53,7 @@ class NetworkManager {
                 isAiming: false,
                 isShooting: false
             },
+            health: 100, // Sync health
             characterName: 'messi',
             modelLoaded: false
         };
@@ -96,6 +97,12 @@ class NetworkManager {
             this.uid = userCredential.user.uid;
             this.playerId = this.uid;
             console.log('✅ Firebase Anonymous Auth Successful:', this.uid);
+
+            // Sync health
+            setOnHealthChange((health) => {
+                this.updateLocalPlayer({ health });
+            });
+
             return true;
         } catch (error) {
             console.error('❌ Firebase Init Error:', error);
@@ -420,6 +427,9 @@ class NetworkManager {
         onChildAdded(hitsRef, (snapshot) => {
             const hit = snapshot.val();
             if (!hit) return;
+
+            // Only process new hits (since join) to avoid double counting old damage
+            if (hit.timestamp < this.joinTime) return;
 
             // Logic to track damage and kills
             // Note: In P2P, we need to locate the victim and apply damage locally

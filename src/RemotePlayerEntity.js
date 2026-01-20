@@ -372,6 +372,12 @@ export class RemotePlayer {
         if (data.isWeaponVisible !== undefined) {
             this.isWeaponVisible = data.isWeaponVisible;
         }
+
+        // Update Health
+        if (typeof data.health === 'number') {
+            this.health = data.health;
+            this.updateHealthBar();
+        }
     }
 
     updateAnimation(deltaTime) {

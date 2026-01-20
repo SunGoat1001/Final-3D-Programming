@@ -5,6 +5,7 @@ import { world, defaultMaterial } from "./physics.js";
 import { BULLET_RADIUS } from "./constants.js";
 import { getObstaclesMeshes } from "./obstacles.js";
 import { getEnemyMesh, hitEnemy } from "./enemy.js";
+import { getPlayerMesh, takeDamage } from "./player.js";
 import { isRangedWeapon, isMeleeWeapon } from "./weapons/WeaponData.js";
 import { throwGrenade } from "./grenade.js";
 import { showHitmarker } from "./hitmarker.js";
@@ -59,6 +60,8 @@ export function processShot(shotData) {
   if (shotData.isRanged) {
     // Process ranged weapon shots (bullets/pellets)
     shotData.shots.forEach((shot) => {
+      // Mark as local shot
+      shot.owner = 'local';
       createBullet(shot);
     });
 
@@ -115,6 +118,7 @@ export function createBullet(shot) {
     life: 3000, // 3 seconds
     prev: bulletBody.position.clone(),
     damage: shot.damage,
+    owner: shot.owner || 'local', // Default to local if not specified
     range: shot.range,
     weaponId: shot.weaponId
   });
@@ -323,6 +327,27 @@ export function updateBullets(deltaTime) {
 
           showHitmarker();
 
+          spawnImpactEffect(
+            hit.point,
+            hit.face?.normal || new THREE.Vector3(0, 1, 0),
+            "enemy"
+          );
+
+          scene.remove(bullet.mesh);
+          world.removeBody(bullet.body);
+          bullets.splice(i, 1);
+          continue;
+        }
+      }
+
+      // Check Local Player (Mesh Hitbox)
+      const playerMesh = getPlayerMesh();
+      if (playerMesh && bullet.owner !== 'local') {
+        const playerHits = raycaster.intersectObject(playerMesh, false);
+        if (playerHits.length > 0) {
+          const hit = playerHits[0];
+          takeDamage(bullet.damage || 10);
+          // Visual effect
           spawnImpactEffect(
             hit.point,
             hit.face?.normal || new THREE.Vector3(0, 1, 0),

@@ -15,9 +15,15 @@ export function initObstacles() {
     createObstacle(-0.03, -7.84, 0, 5.4, 3, 0.35);
     createObstacle(3.6, -7.82889, 0, 0.6, 3, 0.35);
     createObstacle(-3.88628, -7.32, 0, 0.35, 3, 1.1);
-    // Create walll
+
+    // Create orange walll
     createObstacle(3.64092, 5.06983, 0.5, 0.9, 1, 0.1);
     createObstacle(3.64092, -3.9, 0.5, 0.9, 1, 0.1);
+    createObstacle(-1.28395, -0.861591, 0.5, 1.3, 1, 0.1);
+    createObstacle(1.76424, -0.861591, 0.5, 1.8, 1, 0.1);
+    createObstacle(3.69139, -0.861591, 0.5, 1.3, 1, 0.1);
+    createObstacle(0.101466, -0.861591, 1.21262, 1.3, 1, 0.1);
+    createObstacle(0.799693, -0.861591, 1.5, 2.4, 1, 0.1);
 
     // Create cầu thang
     createObstacle(-3.55903, -4.87136, 0, 0.88, 0.5, 0.4);

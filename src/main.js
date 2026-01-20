@@ -31,7 +31,7 @@ import { lobbyUI } from './ui/LobbyUI.js';
 // Multiplayer
 import { networkManager } from './NetworkManager.js';
 import { setNetworkManager } from './shooting.js';
-import { getPlayerPosition } from './player.js';
+import { getPlayerPosition, updatePlayer } from './player.js';
 
 // Setup network manager for shooting
 // Setup network manager for shooting
@@ -45,10 +45,8 @@ networkManager.onPlayerShot = (shotData) => {
         createBullet({
             origin: new THREE.Vector3(shotData.position.x, shotData.position.y, shotData.position.z),
             direction: new THREE.Vector3(shotData.direction.x, shotData.direction.y, shotData.direction.z),
-            damage: 0, // Visual only for remote shots? 
-            // Actually, we want it to potentially hit people if we use client-side authority.
-            // But let's set damage to 0 to avoid double-processing damage.
-            // The shooter already sends 'hitPlayer' events.
+            damage: 0, // Visual collision only, actual damage comes from 'hitPlayer' network event
+            owner: 'remote', // Mark as remote shot so it can hit local player (visual block)
             bulletSpeed: 150,
             weaponId: shotData.weapon
         });
@@ -293,6 +291,8 @@ function animate() {
 
     // Update enemy visual sync
     updateEnemy();
+    // Update local player hitbox sync
+    updatePlayer();
     // Update ammo pickups
     updateAmmoPickups(sphereBody, weaponManager);
 

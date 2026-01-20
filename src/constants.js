@@ -27,6 +27,7 @@ export const START_POSITION = { x: 0, y: 5, z: 0 };
 export const SPAWN_RED = { x: 8, y: 2, z: 14 };
 export const SPAWN_BLUE = { x: -8, y: 2, z: -14 };
 export const MOVE_FORCE_MULTIPLIER = 40;  // Force multiplier for movement
+export const MOVE_TORQUE_MULTIPLIER = 1; // Torque multiplier to help roll uphill
 export const PLAYER_INITIAL_HEALTH = 100; // Player starting health
 
 // Controls

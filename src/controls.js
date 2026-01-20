@@ -4,6 +4,7 @@ import {
     MOUSE_SENSITIVITY,
     JUMP_VELOCITY,
     MOVE_FORCE_MULTIPLIER,
+    MOVE_TORQUE_MULTIPLIER,
     SPRINT_MULTIPLIER,
     CROUCH_MULTIPLIER,
     STANDING_HEIGHT,
@@ -308,6 +309,18 @@ export class PointerLockControlsCannon {
                 worldVelocity.z * this.sphereBody.mass * finalForceMultiplier
             );
             this.sphereBody.applyForce(force);
+
+            // Add a rolling torque so the sphere can drive up slopes instead of sliding
+            const torqueDir = new CANNON.Vec3(worldVelocity.x, 0, worldVelocity.z);
+            if (torqueDir.lengthSquared()) {
+                torqueDir.normalize();
+                const torque = new CANNON.Vec3();
+                this.upAxis.cross(torqueDir, torque);
+                const radius = this.sphereBody.shapes[0]?.radius || 1;
+                const torqueStrength = finalForceMultiplier * this.sphereBody.mass * radius * MOVE_TORQUE_MULTIPLIER;
+                torque.scale(torqueStrength, torque);
+                this.sphereBody.torque.vadd(torque, this.sphereBody.torque);
+            }
         }
         // Interpolate FOV for smooth zoom
         const fovDiff = this.targetFOV - this.currentFOV;

@@ -64,9 +64,9 @@ export function createPlayerBody() {
     // Invisible but raycastable
     const playerMaterial = new THREE.MeshStandardMaterial({
         color: 0xff0000, // Blue for debug (or invisible)
-        // transparent: true,
-        // opacity: 0.0, // Invisible
-        // wireframe: false
+        transparent: true,
+        opacity: 0.0, // Invisible
+        wireframe: false
     });
     playerMesh = new THREE.Mesh(playerGeometry, playerMaterial);
     playerMesh.position.copy(sphereBody.position);

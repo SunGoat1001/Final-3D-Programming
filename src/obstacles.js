@@ -211,14 +211,15 @@ function createObstacle(x, z, y, width, height, depth, rotateX = 0, rotateY = 0,
     // Three.js mesh
     const geometry = new THREE.BoxGeometry(scaledWidth, scaledHeight, scaledDepth);
     const material = new THREE.MeshStandardMaterial({
-        color: "blue"
+        color: "blue",
+        opacity: 0
     });
     const mesh = new THREE.Mesh(geometry, material);
     mesh.position.set(scaledX, scaledY, scaledZ);
     mesh.rotation.set(rotateX, rotateY, -rotateZ); // rotations unaffected by scale
     mesh.castShadow = true;
     mesh.receiveShadow = true;
-    scene.add(mesh);
+    // scene.add(mesh);
 
     // Cannon.js body
     const shape = new CANNON.Box(new CANNON.Vec3(
